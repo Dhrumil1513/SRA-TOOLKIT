@@ -1,0 +1,24 @@
+FOR INSTALL SRA TOOLKIT
+wget --output-document sratoolkit.tar.gz https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz
+Extract the contents of the tar file:
+tar -vxzf sratoolkit.tar.gz
+For convenience (and to show you where the binaries are) append the path to the binaries to your PATH environment variable:
+export PATH=$PATH:$PWD/sratoolkit.3.0.0-mac64/bin
+Verify that the binaries will be found by the shell:
+which fastq-dump
+This should produce output similar to:
+/Users/JoeUser/sratoolkit.3.0.0-mac64/bin/fastq-dump
+est that the toolkit is functional:
+fastq-dump --stdout -X 2 SRR390728
+Within a few seconds, the command should produce this exact output (and nothing else):
+
+Read 2 spots for SRR390728
+Written 2 spots for SRR390728
+@SRR390728.1 1 length=72
+CATTCTTCACGTAGTTCTCGAGCCTTGGTTTTCAGCGATGGAGAATGACTTTGACAAGCTGAGAGAAGNTNC
++SRR390728.1 1 length=72
+;;;;;;;;;;;;;;;;;;;;;;;;;;;9;;665142;;;;;;;;;;;;;;;;;;;;;;;;;;;;;96&&&&(
+@SRR390728.2 2 length=72
+AAGTAGGTCTCGTCTGTGTTTTCTACGAGCTTGTGTTCCAGCTGACCCACTCCCTGGGTGGGGGGACTGGGT
++SRR390728.2 2 length=72
+;;;;;;;;;;;;;;;;;4;;;;3;393.1+4&&5&&;;;;;;;;;;;;;;;;;;;;;<9;<;;;;;464262
