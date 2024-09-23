@@ -1,3 +1,36 @@
  ssh sisodiya.d@tejas.igib.res.in
 enter the password  Dhrumil@987#
  srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty /bin/bash -i  # to go to the node
+ srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty --job-name "testrun" /bin/bash -i
+ squeue
+ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh # installing the miniconda installar
+ wget https://docs.anaconda.com/anaconda/install/linux/ # install the anaconda
+wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh  # to install conda
+
+#To activate conda's base environment in your current shell session:
+
+eval "$(/home/sisodiya.d/anaconda3/bin/conda shell.YOUR_SHELL_NAME hook)"
+
+#To install conda's shell functions for easier access, first activate, then:
+
+conda init
+
+# Create a new environment
+conda create -n sra_toolkit python=3.9
+
+# Activate the environment
+conda activate sra_toolkit
+
+# Add necessary channels
+conda config --add channels bioconda
+conda config --add channels conda-forge
+
+# Install SRA Toolkit
+conda install sra-tools
+
+# Verify installation
+fastq-dump --version
+
+conda info --envs
+# to know about the environment
+
