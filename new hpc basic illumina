@@ -1,0 +1,3 @@
+ ssh sisodiya.d@tejas.igib.res.in
+enter the password  Dhrumil@987#
+ srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty /bin/bash -i  # to go to the node
