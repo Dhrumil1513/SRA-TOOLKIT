@@ -1,0 +1,7 @@
+ conda activate sra_toolkit
+  wget https://github.com/samtools/samtools/releases/download/1.21/samtools-1.21.tar.bz2   # install sam tools
+  tar -xjf samtools-1.21.tar.bz2  # decompress
+  cd samtools-1.21
+  make
+  export PATH=$PATH:/home/sisodiya.d/samtools-1.21
+  samtool --version
