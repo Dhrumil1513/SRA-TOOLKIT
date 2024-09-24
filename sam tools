@@ -5,3 +5,9 @@
   make
   export PATH=$PATH:/home/sisodiya.d/samtools-1.21
   samtool --version
+
+ wget https://github.com/broadinstitute/picard/releases/download/3.2.0/picard.jar # to install pichard by java
+# install pichard by conda
+conda create -n picard-env openjdk=17
+conda activate picard-env
+conda install -c bioconda picard  #You can then install Picard within the Conda environment.
