@@ -1,1 +1,8 @@
+ ssh sisodiya.d@tejas.igib.res.in
+enter the password  Dhrumil@987#
+ srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty /bin/bash -i  # to go to the node
+ srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty --job-name "testrun" /bin/bash -i
+ squeue
+cd ../../lustre/sisodiya.d/; ls  # to go into lusture
+cp -r genomes ../../home/sisodiya.d/   # to copy the files    cp name path where to copy
 
