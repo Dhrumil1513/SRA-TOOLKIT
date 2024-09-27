@@ -5,4 +5,5 @@ enter the password  Dhrumil@987#
  squeue
 cd ../../lustre/sisodiya.d/; ls  # to go into lusture
 cp -r genomes ../../home/sisodiya.d/   # to copy the files    cp name path where to copy
-
+rm dhrumil.txt # removee dhrumil.txt file
+mv file name <path to move>  # move to the particular location given in path
