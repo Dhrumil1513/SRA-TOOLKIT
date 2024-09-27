@@ -36,3 +36,4 @@ fastq-dump --version
 conda info --envs
 # to know about the environment
 
+ for dhrumil in `cat genomes.txt`; do fastq-dump --split-3 --gzip $dhrumil; done   # for loop download the sequence
