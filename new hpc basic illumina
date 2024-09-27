@@ -3,6 +3,8 @@ enter the password  Dhrumil@987#
  srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty /bin/bash -i  # to go to the node
  srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty --job-name "testrun" /bin/bash -i
  squeue
+cd ../../lustre/sisodiya.d/; ls  # to go into lusture
+cp -r genomes ../../home/sisodiya.d/   #
  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh # installing the miniconda installar
  wget https://docs.anaconda.com/anaconda/install/linux/ # install the anaconda
 wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh  # to install conda
