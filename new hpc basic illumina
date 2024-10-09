@@ -43,3 +43,7 @@ while read SRR; do
     fastq-dump --split-3 --gzip "$SRR"
 done < genomes.txt
 
+# direct download 
+while read line; do
+wget https://trace.ncbi.nlm.nih.gov/Traces/sra-reads-be/fastq?acc=${line};
+done < list_of_ids
