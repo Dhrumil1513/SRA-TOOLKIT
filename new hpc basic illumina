@@ -37,3 +37,9 @@ conda info --envs
 # to know about the environment
 
  for dhrumil in `cat genomes.txt`; do fastq-dump --split-3 --gzip $dhrumil; done   # for loop download the sequence
+
+# while loop to download srr files
+while read SRR; do
+    fastq-dump --split-3 --gzip "$SRR"
+done < genomes.txt
+
