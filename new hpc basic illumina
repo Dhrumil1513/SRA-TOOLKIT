@@ -27,6 +27,22 @@ conda activate sra_toolkit
 conda config --add channels bioconda
 conda config --add channels conda-forge
 
+
+# to share files
+scp -r file name sisodiya.d@tejas.igib.res.in:/luster/sisodiya.d
+
+#to zip the file
+zip -r file name new zip file name 
+
+
+# download multiple file by slurm.sh
+vi runner.sh
+for files in `cat genome.txt` ; do fastq-dump --split-3 --gzip $files ; done
+vi slurm.sh     edit the runner.sh
+# to run the slurm file
+sbatch slurm.sh
+
+
 # Install SRA Toolkit
 conda install sra-tools
 
