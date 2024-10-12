@@ -9,7 +9,7 @@ cp -r genomes ../../home/sisodiya.d/   #
  wget https://docs.anaconda.com/anaconda/install/linux/ # install the anaconda
 wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh  # to install conda
 
-#To activate conda's base environment in your current shell session:
+#To activate conda's base environment in your current shell session: 
 
 eval "$(/home/sisodiya.d/anaconda3/bin/conda shell.YOUR_SHELL_NAME hook)"
 
