@@ -1,0 +1,6 @@
+# indexing refference file
+bwa index -a bwtsw GCF_009734005.1_ASM973400v2_genomic.fasta
+samtools faidx GCF_009734005.1_ASM973400v2_genomic.fasta
+picard CreateSequenceDictionary R= GCF_009734005.1_ASM973400v2_genomic.fasta O= /lustre/sisodiya.d/new_fasta_ent/
+
+#install trimomatric and other tools for query
