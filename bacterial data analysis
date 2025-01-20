@@ -5,6 +5,7 @@ picard CreateSequenceDictionary R= GCF_009734005.1_ASM973400v2_genomic.fasta O= 
 
 #install trimomatric and other tools for query
 trimmomatic PE -threads 12 -phred33 -trimlog ./ERR13926416.trimlog ./ERR13926416_1.fastq.gz ./ERR13926416_2.fastq.gz ERR13926416_1.trimpaired1.fastq.gz ERR13926416_1.trimunpaired1.fastq.gz ERR13926416_2.trimpaired2.fastq.gz ERR13926416_2.trimunpaired2.fastq.gz LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 TOPHRED33
+# EXTRA STEP POLISH READ     pilon --genome GCF_009734005.1_ASM973400v2_genomic.fasta --frags SRR25131682_trimmed_bwa_sorted.bam --unpaired SRR25131682_unpairedtrimmed_bwa_sorted.bam
 bwa mem -threads 40 ./GCF_009734005.1_ASM973400v2_genomic.fasta ./ERR13926416_1.trimpaired1.fastq.gz ./ERR13926416_2.trimpaired2.fastq.gz > ERR13926416_trimmed_bwa.sam
 samtools view -bS -o ERR13926416_trimmed_bwa.bam ERR13926416_trimmed_bwa.sam
 samtools flagstat ERR13926416_ > FH5_trimmed_bwa.stdout
