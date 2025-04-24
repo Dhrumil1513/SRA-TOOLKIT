@@ -1,0 +1,28 @@
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+library(RColorBrewer)
+display.brewer.all()
+BiocManager::install("ComplexHeatmap", force = TRUE)
+library(ComplexHeatmap)
+library(viridisLite)
+abc = read.csv('Enterobacter_Germany.csv', stringsAsFactors = F)
+rownames(abc) = abc$Xs
+abc$X = NULL
+abc_mat = as.matrix(abc)
+#pdf('Stephylococcus9_heatmap.pdf',width = 35, height = 25)
+#Heatmap(abc_mat, col = c("#E0FFE5", "#2ECC71", "#0D4F2C"), row_names_side = 'right', column_names_side = 'bottom',  column_names_gp = grid::gpar(fontsize = 20), column_names_rot = 60,
+        #row_names_gp = grid::gpar(fontsize = 10),heatmap_legend_param = list(title = "ANI %", title_gp = gpar(fontsize = 15),labels_gp = gpar(fontsize = 14)))
+Heatmap(abc_mat, 
+        col =c('#E0FFE5', '#2ECC71', '#0D4F2C'), 
+        row_names_side = 'right', 
+        column_names_side = 'bottom',
+        column_names_gp = grid::gpar(fontsize = 18),
+        column_names_rot = 50,  # rotate column names
+        row_names_gp = grid::gpar(fontsize = 10),
+        heatmap_legend_param = list(
+          title = "ANI %",
+          title_gp = gpar(fontsize = 15),
+          labels_gp = gpar(fontsize = 14)
+        )
+)
+dev.off()
