@@ -3,4 +3,8 @@ picard -Xmx7g SortSam -I CSH_1.bam -O CSH_1.sort.bam -VALIDATION_STRINGENCY LENI
 ######## add read group information
 picard AddOrReplaceReadGroups I=CSH_1.sort.bam O=CSH_1.rg.bam RGID=group1 RGLB=lib1 RGPL=illumina RGPU=unit1 RGSM=sample1
 picard -Xmx7g MarkDuplicates -I CSH_1.rg.bam -O CSH_1.rg.dup.bam -M marked_dup_metrics.txt     (mark duplicates)
+###### prestep before making vcf files
+picard CreateSequenceDictionary R=GCA_030014125.1_ASM3001412v1_genomic.fna O=GCA_030014125.1_ASM3001412v1_genomic.dict
+samtools index CSH_1.rg.dup.bam  ## index the files
+gatk HaplotypeCaller -R GCA_030014125.1_ASM3001412v1_genomic.fna -I CSH_1.rg.dup.bam -O variants.vcf
 
