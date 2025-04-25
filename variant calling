@@ -8,4 +8,4 @@ picard CreateSequenceDictionary R=GCA_030014125.1_ASM3001412v1_genomic.fna O=GCA
 samtools index CSH_1.rg.dup.bam  ## index the files
 gatk HaplotypeCaller -R GCA_030014125.1_ASM3001412v1_genomic.fna -I CSH_1.rg.dup.bam -O variants.vcf
 
- 
+ gatk VariantFiltration -R GCA_030014125.1_ASM3001412v1_genomic.fna -V variants.vcf -O variants.filtered.vcf --filter-expression "QD < 2.0 || FS > 60.0 || MQ < 40.0" --filter-name "basic_snp_filter"
