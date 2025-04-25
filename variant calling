@@ -1,1 +1,6 @@
  bwa mem -t 40 ./GCA_030014125.1_ASM3001412v1_genomic.fna ./CSH_1_R1.fq.gz ./CSH_1_R2.fq.gz | samtools view -b -h -o CSH_1.bam
+picard -Xmx7g SortSam -I CSH_1.bam -O CSH_1.sort.bam -VALIDATION_STRINGENCY LENIENT -SORT_ORDER coordinate -MAX_RECORDS_IN_RAM 3000000 -CREATE_INDEX true
+######## add read group information
+picard AddOrReplaceReadGroups I=CSH_1.sort.bam O=CSH_1.rg.bam RGID=group1 RGLB=lib1 RGPL=illumina RGPU=unit1 RGSM=sample1
+picard -Xmx7g MarkDuplicates -I CSH_1.rg.bam -O CSH_1.rg.dup.bam -M marked_dup_metrics.txt     (mark duplicates)
+
