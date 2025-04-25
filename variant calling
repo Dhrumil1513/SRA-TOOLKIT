@@ -1,0 +1,1 @@
+ bwa mem -t 40 ./GCA_030014125.1_ASM3001412v1_genomic.fna ./CSH_1_R1.fq.gz ./CSH_1_R2.fq.gz | samtools view -b -h -o CSH_1.bam
