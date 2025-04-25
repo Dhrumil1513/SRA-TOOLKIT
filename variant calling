@@ -8,3 +8,4 @@ picard CreateSequenceDictionary R=GCA_030014125.1_ASM3001412v1_genomic.fna O=GCA
 samtools index CSH_1.rg.dup.bam  ## index the files
 gatk HaplotypeCaller -R GCA_030014125.1_ASM3001412v1_genomic.fna -I CSH_1.rg.dup.bam -O variants.vcf
 
+ 
