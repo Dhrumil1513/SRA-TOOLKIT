@@ -9,3 +9,9 @@ samtools index CSH_1.rg.dup.bam  ## index the files
 gatk HaplotypeCaller -R GCA_030014125.1_ASM3001412v1_genomic.fna -I CSH_1.rg.dup.bam -O variants.vcf
 
  gatk VariantFiltration -R GCA_030014125.1_ASM3001412v1_genomic.fna -V variants.vcf -O variants.filtered.vcf --filter-expression "QD < 2.0 || FS > 60.0 || MQ < 40.0" --filter-name "basic_snp_filter"
+
+####variant calling VEP  tool
+conda create -n vep_env ensembl-vep htslib bcftools perl-bio-db-hts -y
+gffread annotation.gff3 -T -o annotation.gtf
+samtools faidx genome.fa
+vep -i CSH_1_variants.filtered.vcf -o CSH_1_variants.ann.vep.vcf --fasta GCA_030014125.1_ASM3001412v1_genomic.fna --gff GCA_030014125.1_ASM3001412v1_genomic.gff3 --species fusarium_solani
