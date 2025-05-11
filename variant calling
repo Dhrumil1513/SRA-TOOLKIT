@@ -15,5 +15,5 @@ conda create -n vep_env ensembl-vep htslib bcftools perl-bio-db-hts -y
 gffread annotation.gff3 -T -o annotation.gtf
 samtools faidx genome.fa
 vep -i CSH_1_variants.filtered.vcf -o CSH_1_variants.ann.vep.vcf --fasta GCA_030014125.1_ASM3001412v1_genomic.fna --gff GCA_030014125.1_ASM3001412v1_genomic.gff3 --species fusarium_solani
-###annotation by snippy tool     snipyy annotate -i CSH_1_variants.filtered.vcf -r GCA_030014125.1_ASM3001412v1_genomic.fna -g GCA_030014125.1_ASM3001412v1_genomic.gff3 -o CSH_1_fusarium_annotated.vcf --vcf
+###annotation by snippy tool     #########snipyy annotate -i CSH_1_variants.filtered.vcf -r GCA_030014125.1_ASM3001412v1_genomic.fna -g GCA_030014125.1_ASM3001412v1_genomic.gff3 -o CSH_1_fusarium_annotated.vcf --vcf
 snippy --outdir CSH_1_snippy_output --ref GCA_030014125.1_ASM3001412v1_genomic.fna --R1 reads_1.fq.gz --R2 reads_2.fq.gz --cpus 8
