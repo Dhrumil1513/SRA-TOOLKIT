@@ -1,0 +1,10 @@
+### you have the raw sequence of microbiome 
+## then download the human ref genome
+## then indexing the human genome
+bowtie2-build GCF_000001405.40_GRCh38.p14_genomic.fna GRCh38_index 
+### align the genomes to the reference human genome and delete the human reads
+for files in cat sample.txt; do bowtie2 -x GRCh38_index -1 "$files"_1.fastq.gz -2 "$files"_2.fastq.gz --very-sensitive -p 8 --un-conc-gz "$files"_nohuman_clean.fastq.gz -S /dev/null; done
+### use fastp for to remove low quality reads
+fastp -i SRR5365435_nohuman_clean.fastq.1.gz -I SRR5365435_nohuman_clean.fastq.2.gz -o SRR5365435_nohuman_trim.fastq.1.gz -O SRR5365435_nohuman_trim.fastq.2.gz -h report.html -j report.json
+##### use MetaPhlan tool for taxonomic classification
+metaphlan SRR5365435_nohuman_trim.fastq.1.gz,SRR5365435_nohuman_trim.fastq.2.gz --input_type fastq --mapout SRR5365435.mapout.bz2 -o SRS014476_profile.txt
