@@ -101,3 +101,50 @@ write.csv(taxa.df, file = "output/taxonomy_table.csv", row.names = FALSE)
 
 
 
+
+BiocManager::install("phyloseq")
+install.packages(c("microbiome", "vegan", "tibble"))
+##if (!require("BiocManager", quietly = TRUE))
+  ##install.packages("BiocManager")
+
+##BiocManager::install("microbiome")
+install.packages("remotes")
+library(remotes)
+install_github("microbiome/microbiome")
+# Load the packages
+library(phyloseq)
+library(microbiome)
+library(ggplot2)
+library(vegan)
+library(tibble)
+
+
+otu_mat <- otu_table(t(seqtab.nochim), taxa_are_rows = TRUE)
+tax_mat <- tax_table(taxa)
+# Example minimal metadata if none exists
+sample_metadata <- data.frame(SampleID = rownames(seqtab.nochim))
+rownames(sample_metadata) <- rownames(seqtab.nochim)
+
+samp_dat <- sample_data(sample_metadata)
+
+ps <- phyloseq(otu_mat, tax_mat, samp_dat)
+
+tax_table(ps)[1:5, ]
+
+saveRDS(ps, file = "phyloseq_object")
+View(ps)
+
+# Calculate alpha diversity (e.g., using observed OTUs, Shannon diversity)
+alpha_diversity <- microbiome::alpha(ps, index = "all")
+
+# Add alpha diversity to your phyloseq object
+ps <- merge_phyloseq(ps, otu_table(alpha_diversity, taxa_are_rows = FALSE))
+
+sample_variables(ps)
+
+# Example:  Boxplot of observed OTUs by group
+plot_richness(ps, x = "SampleID", measures = NULL) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2) + # Optional: Add jitter for individual points
+  theme_bw()
+
