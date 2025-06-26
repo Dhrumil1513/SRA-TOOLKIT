@@ -148,3 +148,20 @@ plot_richness(ps, x = "SampleID", measures = NULL) +
   geom_jitter(width = 0.2) + # Optional: Add jitter for individual points
   theme_bw()
 
+
+
+# Calculate beta diversity (e.g., using Bray-Curtis dissimilarity)
+bray_distance <- distance(ps, method = "bray")
+
+# Perform Principal Coordinates Analysis (PCoA)
+pcoa <- ordinate(ps, method = "PCoA", distance = "bray")
+
+# Plot PCoA results
+#plot_ordination(ps, pcoa, color = "SampleID") +
+ # geom_point(size = 3) +
+  #theme_bw()
+
+# Alternatively, use plot_richness to visualize beta diversity
+plot_richness(ps, x = "SampleID", color = "SampleID") +
+   geom_point() +
+   stat_ellipse(type = "norm") # Add ellipses to show grouping
