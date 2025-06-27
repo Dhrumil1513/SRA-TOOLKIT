@@ -2,7 +2,7 @@ test
 
 
 
-if (!requireNamespace("BiocManager", quietly = TRUE))
+if (!requireNamespace("BiocManager", quietly = TRUE)) 
   install.packages("BiocManager")
 BiocManager::install("ShortRead", version = "3.11") 
 # Or you can use earlier versions of Biocondcutor, e.g. if you have a pre-3.6 version of R
