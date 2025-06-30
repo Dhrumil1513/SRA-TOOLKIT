@@ -165,3 +165,76 @@ pcoa <- ordinate(ps, method = "PCoA", distance = "bray")
 plot_richness(ps, x = "SampleID", color = "SampleID") +
    geom_point() +
    stat_ellipse(type = "norm") # Add ellipses to show grouping
+
+
+
+
+
+
+
+
+
+
+
+########NEW
+# Calculate alpha diversity
+alpha_div <- estimate_richness(ps, measures = c("Shannon", "Simpson", "Observed", "Chao1"))
+
+# Add sample metadata if needed
+alpha_div <- cbind(sample_data(ps), alpha_div)
+
+# Plot Shannon diversity
+library(ggplot2)
+ggplot(alpha_div, aes(x = SampleID, y = Shannon)) +  # replace SampleID with your actual sample variable
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Shannon Diversity", y = "Shannon Index", x = "")
+####PLOT ALL IN ONE GRAPH
+library(tidyr)
+alpha_long <- pivot_longer(alpha_div, cols = c(Shannon, Simpson, Observed, Chao1), 
+                           names_to = "Metric", values_to = "Value")
+
+ggplot(alpha_long, aes(x = SampleID, y = Value, fill = Metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~Metric, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Alpha Diversity Metrics", y = "Diversity Value", x = "")
+
+
+
+# Bray-Curtis distance and NMDS ordination   THIS CALCULATION REQUIRE MINIMUM 3 SAMPLES
+ord_nmds <- ordinate(ps, method = "NMDS", distance = "bray")
+
+# Plot NMDS
+plot_ordination(ps, ord_nmds, color = "SampleID") +  
+  geom_point(size = 4) +
+  theme_minimal() +
+  labs(title = "NMDS - Bray-Curtis")
+
+# PCoA
+ord_pcoa <- ordinate(ps, method = "PCoA", distance = "bray")
+plot_ordination(ps, ord_pcoa, color = "SampleID") +
+  geom_point(size = 4) +
+  theme_minimal() +
+  labs(title = "PCoA - Bray-Curtis")
+
+
+#### also done more then 2 samples
+##test for significant differences in beta diversity between groups.
+library(vegan)
+bray_dist <- phyloseq::distance(ps, method = "bray")
+sample_df <- data.frame(sample_data(ps))
+
+adonis_result <- adonis2(bray_dist ~ SampleID, data = sample_df)
+print(adonis_result)
+
+
+# Convert to relative abundance
+ps_relabund <- transform_sample_counts(ps, function(x) x / sum(x))
+
+# Plot composition at genus level (or other levels)
+library(microbiome)
+plot_composition(ps_relabund, taxonomic.level = "Genus", otu.sort = "abundance") +
+  theme_minimal()
+
+
