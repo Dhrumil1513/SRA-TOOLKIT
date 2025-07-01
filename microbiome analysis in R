@@ -1,8 +1,5 @@
-test   
-
-
-
-if (!requireNamespace("BiocManager", quietly = TRUE)) 
+#####SCRIPT FOR MICROBIOME ANALYSIS
+if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 BiocManager::install("ShortRead", version = "3.11") 
 # Or you can use earlier versions of Biocondcutor, e.g. if you have a pre-3.6 version of R
@@ -24,14 +21,14 @@ BiocManager::version()
 
 library(Rcpp)
 library("dada2")
-path <- "C:/Users/dhrumil/Desktop/microbiome_data"
+path <- "C:/Users/dhrumil/Desktop/microbiome/"
 my_files <- list.files(path)
 
 fnFs <- sort(list.files(path, pattern="_trim.fastq.1", full.names = TRUE))
 fnRs <- sort(list.files(path, pattern="_trim.fastq.2", full.names = TRUE))
 
-plotQualityProfile(fnFs[1:2])  ##225
-plotQualityProfile(fnRs[1:2])   ##235
+plotQualityProfile(fnFs[1:5])  ##220
+plotQualityProfile(fnRs[1:5])   ##220
 
 # Extract sample names, assuming filenames have format: SAMPLENAME_XXX.fastq
 sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
@@ -43,7 +40,7 @@ filtRs <- file.path(path, "filtered", paste0(sample.names, "_R_filt.fastq.gz"))
 names(filtFs) <- sample.names
 names(filtRs) <- sample.names
 
-trim_out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(225,235),
+trim_out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen=c(220,220),
                      maxN=0, maxEE=c(2,2), truncQ=2, rm.phix=TRUE,
                      compress=TRUE, multithread=FALSE)
 
@@ -75,6 +72,8 @@ table(nchar(getSequences(seqtab)))
 ###Remove chimera
 seqtab.nochim <- removeBimeraDenovo(seqtab, method="consensus", multithread=TRUE, verbose=TRUE)
 dim(seqtab.nochim)
+write.csv(seqtab.nochim, file = "output/otu_table.csv", row.names = TRUE)
+
 
 sum(seqtab.nochim)/sum(seqtab)
 
@@ -100,7 +99,7 @@ taxa.df <- taxa.df[, c(ncol(taxa.df), 1:(ncol(taxa.df)-1))]  # move Sequence to 
 write.csv(taxa.df, file = "output/taxonomy_table.csv", row.names = FALSE)
 
 
-
+getwd()
 
 BiocManager::install("phyloseq")
 install.packages(c("microbiome", "vegan", "tibble"))
@@ -118,27 +117,38 @@ library(ggplot2)
 library(vegan)
 library(tibble)
 
+library(readxl)
+
+sample_metadata <- read_excel("sample.table.xlsx")
+sample_metadata <- as.data.frame(sample_metadata)
+rownames(sample_metadata) <- sample_metadata$`run ID`
+sample_metadata <- sample_metadata[rownames(seqtab.nochim), ]  
+
 
 otu_mat <- otu_table(t(seqtab.nochim), taxa_are_rows = TRUE)
 tax_mat <- tax_table(taxa)
-# Example minimal metadata if none exists
-sample_metadata <- data.frame(SampleID = rownames(seqtab.nochim))
-rownames(sample_metadata) <- rownames(seqtab.nochim)
-
 samp_dat <- sample_data(sample_metadata)
 
 ps <- phyloseq(otu_mat, tax_mat, samp_dat)
 
+
 tax_table(ps)[1:5, ]
 
-saveRDS(ps, file = "phyloseq_object")
+saveRDS(ps, file = "phyloseq_object.rds")
+View(sample_data(ps))
 View(ps)
+ps <- readRDS("phyloseq_object.rds")
+### TILL THIS IT COMPLETE FOR TAXONOMY CLASSIFICATION
+
+
+
+###ALPHA AND BETA DIVERSITY IN DIFFERENT PLOTS AND STATISTIC
 
 # Calculate alpha diversity (e.g., using observed OTUs, Shannon diversity)
 alpha_diversity <- microbiome::alpha(ps, index = "all")
 
 # Add alpha diversity to your phyloseq object
-ps <- merge_phyloseq(ps, otu_table(alpha_diversity, taxa_are_rows = FALSE))
+ps <- merge_phyloseq(ps, otu_mat(alpha_diversity, taxa_are_rows = FALSE))
 
 sample_variables(ps)
 
@@ -149,22 +159,66 @@ plot_richness(ps, x = "SampleID", measures = NULL) +
   theme_bw()
 
 
-
 # Calculate beta diversity (e.g., using Bray-Curtis dissimilarity)
-bray_distance <- distance(ps, method = "bray")
+bray_distance <- distance(ps_filtered, method = "bray")
 
 # Perform Principal Coordinates Analysis (PCoA)
-pcoa <- ordinate(ps, method = "PCoA", distance = "bray")
+pcoa <- ordinate(ps_filtered, method = "PCoA", distance = "bray")
 
 # Plot PCoA results
-#plot_ordination(ps, pcoa, color = "SampleID") +
- # geom_point(size = 3) +
-  #theme_bw()
+plot_ordination(ps_filtered, pcoa, color = "Phenotype") +
+ geom_point(size = 3) +
+  theme_bw()
 
 # Alternatively, use plot_richness to visualize beta diversity
-plot_richness(ps, x = "SampleID", color = "SampleID") +
+plot_richness(ps_filtered, x = "Phenotype", color = "Phenotype") +
    geom_point() +
    stat_ellipse(type = "norm") # Add ellipses to show grouping
+
+###NMDS Ordination Plot to know the similarity and dissimilarity in plot
+plot_ordination(ps_filtered, ord_nmds, color = "Phenotype") +
+  stat_ellipse(type = "norm") +
+  theme_minimal(
+
+
+
+
+####new abandance script from google
+
+#1. Convert to relative abundance (if needed)
+ps.rel <- transform_sample_counts(ps_filtered, function(x) x/sum(x))
+
+# 2. Aggregate to genus level
+ps.genus <- tax_glom(ps.rel, taxrank = "Genus")
+
+# 3. Melt the data for ggplot2
+ps.genus.melt <- psmelt(ps.genus)
+
+# 4. Sort by abundance for easier viewing
+ps.genus.melt$Genus <- with(ps.genus.melt, reorder(Genus, Abundance, mean, na.rm = TRUE))
+
+# 5. Generate the plot
+ggplot(ps.genus.melt, aes(x = Sample, y = Abundance, fill = Genus)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_y_continuous(labels = scales::percent) +  # Use percentage labels if relative abundance
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Genus Abundance in Microbiome Samples",
+       x = "Sample",
+       y = "Relative Abundance (%)") +
+  theme_bw() # or other theme
+
+# Alternative visualization: Facet by group
+# Assuming you have a grouping variable called "Group" in your sample_data
+ggplot(ps.genus.melt, aes(x = Group, y = Abundance, fill = Genus)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Genus Abundance by Group",
+       x = "Group",
+       y = "Relative Abundance (%)") +
+  facet_wrap(~Genus, scales="free_y") # or scales="fixed"
+
+
+
 
 
 
@@ -186,9 +240,9 @@ sample_metadata$host_age <- as.numeric(sample_metadata$`host age`)
 ps_healthy <- subset_samples(ps, Phenotype == "Healthy")
 ps_psoriasis <- subset_samples(ps, Phenotype == "Psoriasis")
 
-plot_richness(ps, x = "Phenotype", measures = c("Shannon", "Observed"))
-ordination <- ordinate(ps, method = "NMDS", distance = "bray")
-plot_ordination(ps, ordination, color = "Phenotype")
+plot_richness(ps_filtered, x = "Phenotype", measures = c("Shannon", "Observed"))
+ordination <- ordinate(ps_filtered, method = "NMDS", distance = "bray")
+plot_ordination(ps_filtered, ordination, color = "Phenotype")
 
 
 
@@ -275,7 +329,5 @@ ps_relabund <- transform_sample_counts(ps_filtered, function(x) x / sum(x))
 library(microbiome)
 plot_composition(ps_relabund, taxonomic.level = "Genus", otu.sort = "abundance") +
   theme_minimal()
-
-
 
 
