@@ -8,7 +8,7 @@ BiocManager::install("additional_missing_package_1", version = "3.11")
 
 BiocManager::install("ShortRead", version = "3.11")
 
-install.packages("BiocManager")
+install.packages("BiocManager") 
 library(BiocManager)
 install() # Install BioConductor core packages
 install("maEndToEnd")
