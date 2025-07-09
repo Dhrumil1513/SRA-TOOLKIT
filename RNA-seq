@@ -8,3 +8,14 @@ conda install -n RNA-seq -c bioconda star
 conda install -n RNA-seq -c bioconda samtools
 conda install -n RNA-seq -c bioconda deeptools
 conda install -n RNA-seq -c bioconda salmon
+
+###check the quality sequence
+fastqc Fusarium_mat_Day_2_R1.fastq.gz
+fastqc Fusarium_mat_Day_2_R2.fastq.gz
+totalreads=$(unzip -c Fusarium_mat_Day_2_R2_fastqc.zip Fusarium_mat_Day_2_R2_fastqc/fastqc_data.txt | grep 'Total Sequences' | cut -f 2)
+echo $totalreads    ###To extract the total number of reads from the fastQC report
+###triming the adaptors
+fastp -i Fusarium_mat_Day_2_R1.fastq.gz -I Fusarium_mat_Day_2_R2.fastq.gz -o Fusarium_mat_Day_2_R1.trimmed.fastq.gz -O Fusarium_mat_Day_2_R2.trimmed.fastq.gz --detect_adapter_for_pe -l 25 -j Fusarium_mat_Day_2.fastp.json -h Fusarium_mat_Day_2.fastp.html
+###see the html file
+###download reference genome
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
