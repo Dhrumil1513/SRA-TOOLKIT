@@ -1,5 +1,5 @@
 #Install the required programs using anaconda
-conda create -N RNA-seq
+conda create -N RNA-seq 
 
 conda install -n RNA-seq -c bioconda fastqc
 conda install -n RNA-seq -c bioconda fastp
