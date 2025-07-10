@@ -18,4 +18,9 @@ echo $totalreads    ###To extract the total number of reads from the fastQC repo
 fastp -i Fusarium_mat_Day_2_R1.fastq.gz -I Fusarium_mat_Day_2_R2.fastq.gz -o Fusarium_mat_Day_2_R1.trimmed.fastq.gz -O Fusarium_mat_Day_2_R2.trimmed.fastq.gz --detect_adapter_for_pe -l 25 -j Fusarium_mat_Day_2.fastp.json -h Fusarium_mat_Day_2.fastp.html
 ###see the html file
 ###download reference genome
-wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+###this suggested in available script wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/GRCh37_mapping/gencode.v36lift37.annotation.gtf.gz
+gunzip gencode.v36lift37.annotation.gtf.gz
+STAR --runThreadN 4 --runMode genomeGenerate --genomeDir $GENOMEDIR --genomeFastaFiles $GENOMEDIR/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --sjdbGTFfile $GENOMEDIR/gencode.v36lift37.annotation.gtf --sjdbOverhang 150
+
+
