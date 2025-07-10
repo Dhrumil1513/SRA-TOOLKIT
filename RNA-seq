@@ -22,5 +22,5 @@ fastp -i Fusarium_mat_Day_2_R1.fastq.gz -I Fusarium_mat_Day_2_R2.fastq.gz -o Fus
 wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/GRCh37_mapping/gencode.v36lift37.annotation.gtf.gz
 gunzip gencode.v36lift37.annotation.gtf.gz
 STAR --runThreadN 4 --runMode genomeGenerate --genomeDir $GENOMEDIR --genomeFastaFiles $GENOMEDIR/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --sjdbGTFfile $GENOMEDIR/gencode.v36lift37.annotation.gtf --sjdbOverhang 150
-
+### replace  $GENOMEDIR with path
 
