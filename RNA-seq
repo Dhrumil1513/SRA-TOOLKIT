@@ -23,4 +23,11 @@ wget https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/GRCh37
 gunzip gencode.v36lift37.annotation.gtf.gz
 STAR --runThreadN 4 --runMode genomeGenerate --genomeDir $GENOMEDIR --genomeFastaFiles $GENOMEDIR/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --sjdbGTFfile $GENOMEDIR/gencode.v36lift37.annotation.gtf --sjdbOverhang 150
 ### replace  $GENOMEDIR with path
+###sort bam file
+samtools sort Fusarium_mat_Day_2_Aligned.out.bam > Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam
+ samtools flagstat Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam > Fusarium_mat_Day_2_Aligned.out.bam-sorted.flagstat
+###Run qualimap to generate QC reports
+qualimap bamqc -bam Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam -gff /lustre/sisodiya.d/pinal/1_Raw_Data/indexed_genome/gencode.v36lift37.annotation.gtf -outdir Fusarium_mat_Day_2_Aligned.out.bam-bamqc-qualimap-report --java-mem-size=16G
+qualimap rnaseq -bam Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam -gtf /lustre/sisodiya.d/pinal/1_Raw_Data/indexed_genome/gencode.v36lift37.annotation.gtf -outdir Fusarium_mat_Day_2_Aligned.out.bam-rnaseq-qualimap-report --java-mem-size=16G
+
 
