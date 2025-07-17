@@ -4,7 +4,7 @@ conda create -N RNA-seq
 conda install -n RNA-seq -c bioconda fastqc
 conda install -n RNA-seq -c bioconda fastp
 conda install -n RNA-seq -c bioconda multiqc
-conda install -n RNA-seq -c bioconda star
+conda install -n RNA-seq -c bioconda star 
 conda install -n RNA-seq -c bioconda samtools
 conda install -n RNA-seq -c bioconda deeptools
 conda install -n RNA-seq -c bioconda salmon
