@@ -30,4 +30,12 @@ samtools sort Fusarium_mat_Day_2_Aligned.out.bam > Fusarium_mat_Day_2_Aligned.ou
 qualimap bamqc -bam Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam -gff /lustre/sisodiya.d/pinal/1_Raw_Data/indexed_genome/gencode.v36lift37.annotation.gtf -outdir Fusarium_mat_Day_2_Aligned.out.bam-bamqc-qualimap-report --java-mem-size=16G
 qualimap rnaseq -bam Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam -gtf /lustre/sisodiya.d/pinal/1_Raw_Data/indexed_genome/gencode.v36lift37.annotation.gtf -outdir Fusarium_mat_Day_2_Aligned.out.bam-rnaseq-qualimap-report --java-mem-size=16G
 
+conda install bioconda::ucsc-fatotwobit -y ## to convert genome file to .2bit format to check GC bias.
+faToTwoBit GCA_000001405.15_GRCh38_no_alt_analysis_set.fna GCA_000001405.15_GRCh38_no_alt_analysis_set.2bit
+###install deeptools
+conda create -y -n deeptools_env python=3.8 deeptools -c bioconda -c conda-forge
+##index the bam file first
+samtools index Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam
+##now run for compute GC bias
+computeGCBias -b Fusarium_mat_Day_2_Aligned.out.bam-sorted.bam --effectiveGenomeSize 3099922541 -g indexed_genome/GCA_000001405.15_GRCh38_no_alt_analysis_set.2bit -l 100 --GCbiasFrequenciesFile Fusarium_mat_Day_2_Aligned.out.bam.freq.txt  --biasPlot Fusarium_mat_Day_2_Aligned.out.bam.biasPlot.pdf
 
