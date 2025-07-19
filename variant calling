@@ -30,3 +30,16 @@ funannotate clean -i GCA_030014125.1_ASM3001412v1_genomic.fna -o clean_genome.fa
 ##funannotate mask -i clean_genome.fasta -o GCA_030014125.1_ASM3001412v1_genomic.fasta
 awk '/^>/ {print ">contig_" ++i} !/^>/ {print}' GCA_030014125.1_ASM3001412v1_genomic.fasta > cleaned_genome.fasta  #to make header shorter
 funannotate predict -i cleaned_genome2.fasta -o annotation2_output --species "Fusarium solani"  --cpus 16
+
+###funannotate give miltiple files.   now use .gbk file for run antismash tool
+now make filter .gbk file for  remove scaffolds that contain no genes.
+vi filter.py
+from Bio import SeqIO
+with open("Fusarium_solani.gbk", "r") as input_handle, open("Fusarium_solani_filtered.gbk", "w") as output_handle:
+    for record in SeqIO.parse(input_handle, "genbank"):
+        if any(feature.type == "CDS" for feature in record.features):
+            SeqIO.write(record, output_handle, "genbank")
+python filter.py
+
+### now run antismash on .gbk file
+antismash --taxon fungi --output-dir Ref_antismash Fusarium_solani_filtered.gbk
