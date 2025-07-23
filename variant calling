@@ -43,3 +43,12 @@ python filter.py
 
 ### now run antismash on .gbk file
 antismash --taxon fungi --output-dir Ref_antismash Fusarium_solani_filtered.gbk
+
+###use multiple antismash output .gbk files to run big-scape tool
+        conda install bioconda::bigscape -y
+##install pfam data base
+wget ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
+gunzip Pfam-A.hmm.gz
+hmmpress Pfam-A.hmm
+bigscape -i . -o CSH_1_bigscape --cutoffs 0.3 0.5 --cores 8 --mix --mibig --pfam_dir /path/to/Pfam
+
