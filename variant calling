@@ -52,3 +52,7 @@ gunzip Pfam-A.hmm.gz
 hmmpress Pfam-A.hmm
 bigscape -i . -o CSH_1_bigscape --cutoffs 0.3 0.5 --cores 8 --mix --mibig --pfam_dir /path/to/Pfam
 
+####UFCG RUN FOR THE PHYLOGENY
+ufcg profile-pro --input Fusarium_solani.proteins.fa --output CSH_1_profile_output
+PUT ALL .ucg  files in one folder
+ufcg tree --input flat_profiles/ --output tree_output
