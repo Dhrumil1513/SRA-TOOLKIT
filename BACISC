@@ -30,3 +30,6 @@ OPEN CONFIG TERMINAL AND CHOOSE DOWNLOAD DIRECTORY
  vdb-config --interactive
 
  fastq-dump SRR22498720 --split-3 --gzip SRR22498720   # download sra file in zip format
+
+###download metadata from project ids
+for file in `cat metadata.txt`; do iseq -i "$file" -m; done
