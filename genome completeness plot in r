@@ -1,0 +1,47 @@
+library(readxl)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggbreak)
+busco_data <- read_excel("Busco completeness table1.xlsx")
+
+busco_long <- busco_data %>%
+  pivot_longer(
+    cols = c(`Complete (%)`, `Single-copy (%)`, `Duplicated (%)`, `Fragmented (%)`, `Missing (%)`),
+    names_to = "BUSCO_Category",
+    values_to = "Percentage"
+  ) %>%
+  mutate(BUSCO_Category = factor(
+    BUSCO_Category,
+    levels = c("Complete (%)", "Single-copy (%)", "Duplicated (%)", "Fragmented (%)", "Missing (%)")
+  ))
+busco_plot <- ggplot(busco_long, aes(x = Isolate, y = Percentage, fill = BUSCO_Category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c(
+      "Complete (%)" = "darkblue",
+      "Single-copy (%)" = "lightblue",
+      "Duplicated (%)" = "blue",
+      "Fragmented (%)" = "gold",
+      "Missing (%)" = "red"
+    )
+  ) +
+  scale_y_break(c(1, 10), scales = 0.5) +  
+  labs(
+    title = "BUSCO Genome Completeness",
+    x = "Isolate",
+    y = "Percentage of BUSCOs",
+    fill = "BUSCO Category"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(face = "bold", size = 14),   
+    axis.title.y = element_text(face = "bold", size = 14),      
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold", size = 12),  
+    axis.text.y = element_text(face = "bold", size = 12),       
+    legend.title = element_text(face = "bold", size = 13),      
+    legend.text = element_text(size = 11)                       
+  )
+
+
+ggsave("busco_completeness_plot.png", plot = busco_plot, width = 10, height = 6, dpi = 300)
