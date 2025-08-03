@@ -45,3 +45,44 @@ busco_plot <- ggplot(busco_long, aes(x = Isolate, y = Percentage, fill = BUSCO_C
 
 
 ggsave("busco_completeness_plot.png", plot = busco_plot, width = 10, height = 6, dpi = 300)
+
+
+
+
+
+#####ANI PLOT IN R
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+library(RColorBrewer)
+display.brewer.all()
+BiocManager::install("ComplexHeatmap", force = TRUE)
+library(ComplexHeatmap)
+library(viridisLite)
+abc = read.csv('fus_asm.csv', stringsAsFactors = F)
+rownames(abc) = abc$Xs
+abc$X = NULL
+abc_mat = as.matrix(abc)
+pdf('new_ani1.pdf',width = 30, height = 20)
+Heatmap(abc_mat, col = c("#E0FFE5", "#2ECC71", "#0D4F2C"), row_names_side = 'right', column_names_side = 'bottom',  column_names_gp = grid::gpar(fontsize = 35), column_names_rot = 35,
+        row_names_gp = grid::gpar(fontsize = 50),heatmap_legend_param = list(title = "ANI %", title_gp = gpar(fontsize = 35),labels_gp = gpar(fontsize = 35)))
+dev.off()
+
+
+png("ANI_heatmap1.png", width = 3000, height = 2500, res = 300)
+
+Heatmap(
+  abc_mat,
+  col = c("#E0FFE5", "#2ECC71", "#0D4F2C"),
+  row_names_side = 'right',
+  column_names_side = 'bottom',
+  column_names_gp = grid::gpar(fontsize = 35),
+  column_names_rot = 35,
+  row_names_gp = grid::gpar(fontsize = 50),
+  heatmap_legend_param = list(
+    title = "ANI %",
+    title_gp = gpar(fontsize = 35),
+    labels_gp = gpar(fontsize = 35)
+  )
+)
+
+dev.off()
