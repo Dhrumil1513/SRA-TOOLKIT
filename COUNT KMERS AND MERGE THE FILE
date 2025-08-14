@@ -5,5 +5,10 @@ MAKE THE PYTHON FILE AND RUN....
 import pandas as pd
 df = pd.read_csv("all.csv", sep="\t", header=None, names=["genome", "kmer", "count"])
 matrix = df.pivot(index="genome", columns="kmer", values="count")
-matrix = matrix.fillna("NA")
-matrix.to_csv("matrix.tsv", sep="\t")
+matrix = matrix.fillna(0).astype(int)
+matrix.to_csv("matrix_resistance.tsv", sep="\t")
+###convert tsv to csv file
+import pandas as pd
+tsv_file='matrix_resistance.tsv'
+csv_table=pd.read_table(tsv_file,sep='\t')
+csv_table.to_csv('matrix_resistance.csv',index=False)
