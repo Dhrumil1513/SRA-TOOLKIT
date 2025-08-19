@@ -2,6 +2,8 @@
 enter the password  Dhrumil@987#
  srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty /bin/bash -i  # to go to the node
  srun --partition=compute --nodes=1 --ntasks-per-node=2 --pty --job-name "testrun" /bin/bash -i
+##if not work
+srun --partition=compute --nodes=1 --ntasks-per-node=2 --nodelist=node30 --pty /bin/bash -i   ###1st check pestat to check empty nodes
  squeue
 cd ../../lustre/sisodiya.d/; ls  # to go into lusture
 cp -r genomes ../../home/sisodiya.d/   # to copy the files    cp name path where to copy
