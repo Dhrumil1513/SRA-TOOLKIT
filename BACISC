@@ -17,6 +17,9 @@ Within a few seconds, the command should produce this exact output (and nothing 
  awk -F ',' 'BEGIN {OFS="\t"} {$1=$1}1' AMR_resistance.csv > AMR_resistance.tsv
 ####merge 2 .tsv files
 paste matrix_resistance.tsv AMR_resistance.tsv > merged_resistance.tsv
+head -1 new_merged_resistance.tsv | tr '\t' '\n' | wc -l ## count the no. of column
+cut -f7919497 new_merged_sensitive.tsv ###check the last column that has AMR
+
 grep "AMR" merged_resistance.tsv
 Read 2 spots for SRR390728
 Written 2 spots for SRR390728
