@@ -13,7 +13,11 @@ This should produce output similar to:
 est that the toolkit is functional:
 fastq-dump --stdout -X 2 SRR390728
 Within a few seconds, the command should produce this exact output (and nothing else):
-
+###convert .csv to .tsv 
+ awk -F ',' 'BEGIN {OFS="\t"} {$1=$1}1' AMR_resistance.csv > AMR_resistance.tsv
+####merge 2 .tsv files
+cat matrix_resistance.tsv AMR_resistance.tsv > merged_resistance.tsv
+grep "AMR" merged_resistance.tsv
 Read 2 spots for SRR390728
 Written 2 spots for SRR390728
 @SRR390728.1 1 length=72
