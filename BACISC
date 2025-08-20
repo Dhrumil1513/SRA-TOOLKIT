@@ -16,7 +16,7 @@ Within a few seconds, the command should produce this exact output (and nothing 
 ###convert .csv to .tsv 
  awk -F ',' 'BEGIN {OFS="\t"} {$1=$1}1' AMR_resistance.csv > AMR_resistance.tsv
 ####merge 2 .tsv files
-cat matrix_resistance.tsv AMR_resistance.tsv > merged_resistance.tsv
+paste matrix_resistance.tsv AMR_resistance.tsv > merged_resistance.tsv
 grep "AMR" merged_resistance.tsv
 Read 2 spots for SRR390728
 Written 2 spots for SRR390728
