@@ -10,7 +10,7 @@ matrix.to_csv("matrix_resistance.tsv", sep="\t")
 ###convert tsv to csv file
 import pandas as pd
 tsv_file='matrix_resistance.tsv'
-csv_table=pd.read_table(tsv_file,sep='\t')
+csv_table=pd.read_table(tsv_file,sep='\t', low_memory=False)
 csv_table.to_csv('matrix_resistance.csv',index=False)
 
 ####to know particular columne in the .tsv file by name
