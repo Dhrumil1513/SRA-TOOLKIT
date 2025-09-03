@@ -11,7 +11,7 @@ matrix.to_csv("matrix_resistance.tsv", sep="\t")
 import pandas as pd
 tsv_file='matrix_resistance.tsv'
 csv_table=pd.read_table(tsv_file,sep='\t', low_memory=False)
-csv_table.to_csv('matrix_resistance.csv',index=False)
+csv_table.to_csv('matrix_resistance.csv',index=False) 
 
 ####to know particular columne in the .tsv file by name
 col="genome"; awk -v column_val="$col" '{ if (NR==1) {val=-1; for(i=1;i<=NF;i++) { if ($i == column_val) {val=i;}}} if(val != -1) print $val} ' merged.tsv
