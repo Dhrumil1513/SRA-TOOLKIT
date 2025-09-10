@@ -193,3 +193,4 @@ filter_kmers = pd.read_csv("new_filtered_output1.csv", header=None)[0].tolist()
 #filtered_matrix_df = kmer_matrix_df.loc[kmer_matrix_df.index.isin(filter_kmers)]
 filtered_matrix_df = kmer_matrix_df.loc[:, ["genome"] + [k for k in filter_kmers if k in kmer_matrix_df.columns]]
 filtered_matrix_df.to_csv("x_test42a_filtered1.csv", index=False)
+#########################always match the column number of x_train data (after SMOTE) with the x_test data (after the filtering).
