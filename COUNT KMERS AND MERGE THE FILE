@@ -1,12 +1,14 @@
 for f in *.fna; do   kmc -k21 -m4 -t8 -ci2 -cx1000 -fm "$f" kmer tmp;   kmc_dump kmer "${f%.fna}_kmers.txt"; done
 ###MERGE THE ALL KMERS FILES
 for f in *.txt; do genome=$(basename "$f" .txt); awk -v g="$genome" '{print g "\t" $1 "\t" $2}' "$f" >> all.csv; done
-MAKE THE PYTHON FILE AND RUN....
+
+##MAKE THE PYTHON FILE AND RUN....
 import pandas as pd
 df = pd.read_csv("all.csv", sep="\t", header=None, names=["genome", "kmer", "count"])
 matrix = df.pivot(index="genome", columns="kmer", values="count")
 matrix = matrix.fillna(0).astype(int)
 matrix.to_csv("matrix_resistance.tsv", sep="\t")
+
 ###convert tsv to csv file
 import pandas as pd
 tsv_file='matrix_resistance.tsv'
@@ -17,3 +19,132 @@ csv_table.to_csv('matrix_resistance.csv',index=False)
 col="genome"; awk -v column_val="$col" '{ if (NR==1) {val=-1; for(i=1;i<=NF;i++) { if ($i == column_val) {val=i;}}} if(val != -1) print $val} ' merged.tsv
 ###to know particular columne in the .csv file by name
 awk -F',' 'NR==1 {for(i=1;i<=NF;i++) if($i=="AMR") col=i} NR>1 {print $col}' merged.csv
+###join sensitive file and AMR file by merge
+
+### join 2 files sensitive and resistance files
+import pandas as pd
+res = pd.read_csv("9mers_merged_resistance.tsv", sep="\t",low_memory=False)
+sen = pd.read_csv("9mers_merged_sensitive.tsv", sep="\t",low_memory=False)
+print("dataframe reading is done")
+df = pd.concat([res, sen], axis=0, join="outer", ignore_index=True)
+print("merged sone")
+# Fill missing columns with zero
+df = df.fillna(0)
+print("fill zero")
+# Save final file
+df.to_csv("9mers_merged.tsv", sep="\t",index=False)
+#merged = pd.merge(res, sen, on="AMR", how="outer")
+#print("merged succesful")
+#merged = merged.fillna(0)
+#merged.to_csv("final_merged.tsv", sep="\t", index=False)
+
+### divide data into test and train data without SMOTE 
+from sklearn.utils import shuffle
+#train_data preparation
+print("all packages are installed")
+merged= pd.read_csv('9mers_merged.csv', low_memory=False)  ####  the merged file of sensitive and resistance
+print(merged.shape)
+print(merged.head())
+#merged_1 = merged.iloc[:, 1:]
+#print(merged_1.head())
+#merged_1 = merged.iloc[:, 1:47901]
+#data_s = shuffle(merged_1, random_state=102)
+#data_s.set_index('nameseq', inplace=True)
+#data_s.to_csv("eff66_deg1225_shuffled.csv")
+#X= data_s.drop(['AMR'], axis=1)
+#y= data_s['AMR']
+
+n_iterations = 50
+#cv = StratifiedKFold(n_splits=10, random_state=i)
+
+rs_d= [42]
+for i in rs_d:
+    print(i)
+    # Split data into train and test sets (80:20 ratio)
+    data_s = shuffle(merged, random_state=i)
+    data_s.set_index('genome', inplace=True)
+    #data_s.to_csv("eff66_deg1225_shuffled.csv")
+    X= data_s.drop(['AMR'], axis=1)
+    y= data_s['AMR']
+
+    X_train, X_test1, y_train, y_test1 = train_test_split(X, y, test_size=0.2, random_state=i, stratify=y)
+    #X_resamp, y_resamp = SMOTE(random_state=92).fit_resample(X_train, y_train)
+    X_train.to_csv("x_train42a.csv")
+    X_test1.to_csv("x_test42a.csv")
+    y_train.index= X_train.index
+    y_train.to_csv("y_train42a_with_index.csv")
+    y_test1.to_csv("y_test42a.csv")
+    y_test1.index= X_test1.index
+    y_test1.to_csv("y_test42a_with_index.csv")
+
+####run t-test for significant feature extraction
+import pandas as pd
+from scipy.stats import ttest_ind
+from statsmodels.stats.multitest import multipletests
+# Load matrix (samples x features + phenotype column)
+metadata = pd.read_csv("y_train42a_with_index.csv")
+data1 = pd.read_csv("x_train42a.csv")
+data = pd.merge(metadata, data1, on="genome")
+
+print(data.head())
+# Split groups
+#resistant = data[data["AMR"] == "1"] ##.drop(columns=["AMR"])
+#sensitive = data[data["AMR"] == "0"]###.drop(columns=["AMR"])
+data["AMR"] = data["AMR"].astype(int)
+resistant = data[data["AMR"] == 1]
+sensitive = data[data["AMR"] == 0]
+
+print(resistant.head())
+print(sensitive.head())
+
+resistant1 = resistant.drop(columns=["AMR"])
+sensitive1 = sensitive.drop(columns=["AMR"])
+resistant2 = resistant1.reset_index(drop=True)
+sensitive2 = sensitive1.reset_index(drop=True)
+
+print(resistant2.head())
+print(sensitive2.head())
+
+#resistant3 = resistant2.drop(columns=["genome"])
+#sensitive3 = sensitive2.drop(columns=["genome"])
+
+#print(resistant3.head())
+#print(sensitive3.head())
+numeric_cols = resistant2.select_dtypes(include=["number"]).columns
+results = []
+for col in numeric_cols:
+    _, p_val = ttest_ind(resistant2[col], sensitive2[col], equal_var=False)
+    results.append((col, p_val))
+
+#results = []
+#for col1, col2 in zip(resistant2.columns, sensitive2.columns):
+  #  _, p_val = ttest_ind(resistant2[col1], sensitive2[col2])
+   # results.append((col1, p_val))
+
+# Convert to DataFrame
+results_df = pd.DataFrame(results, columns=["Column", "P-value"])
+
+# Save results to CSV file
+results_df.to_csv("t_test_pvalues2.csv", index=False)
+
+
+#### in t_test_pvalues2.csv we get 2 columns 1 kmers 2 p-value now we filter the p value that are less then 0.05.(filter-P_value.py)
+import pandas as pd
+# Load the CSV file
+df = pd.read_csv('t_test_pvalues2.csv')
+# Filter rows where 'p_value_column_name' is less than 0.05
+# Replace 'p_value_column_name' with the actual name of your p-value column
+filtered_df = df[df['P-value'] < 0.05]
+print("p value detected")
+# Save the filtered data to a new CSV file
+filtered_df.to_csv('filtered_output1.csv', index=False)
+
+#### with the help of "filtered_output1.csv" we filter the kmers in matrix files
+import pandas as pd
+ # Load the k-mer matrix file
+kmer_matrix_df = pd.read_csv("x_train42a.csv")
+# Load the k-mer filter file (assuming it's a list of k-mers)
+filter_kmers = pd.read_csv("new_filtered_output1.csv", header=None)[0].tolist()
+#filtered_matrix_df = kmer_matrix_df.loc[kmer_matrix_df.index.isin(filter_kmers)]
+filtered_matrix_df = kmer_matrix_df.loc[:, ["genome"] + [k for k in filter_kmers if k in kmer_matrix_df.columns]]
+filtered_matrix_df.to_csv("x_train42a_filtered1.csv", index=False)
