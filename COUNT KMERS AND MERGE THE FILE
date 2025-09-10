@@ -148,3 +148,48 @@ filter_kmers = pd.read_csv("new_filtered_output1.csv", header=None)[0].tolist()
 #filtered_matrix_df = kmer_matrix_df.loc[kmer_matrix_df.index.isin(filter_kmers)]
 filtered_matrix_df = kmer_matrix_df.loc[:, ["genome"] + [k for k in filter_kmers if k in kmer_matrix_df.columns]]
 filtered_matrix_df.to_csv("x_train42a_filtered1.csv", index=False)
+
+####check the dimensions of .csv file
+import pandas as pd
+df = pd.read_csv('x_train42a_filtered.csv')  # Replace 'your_file.csv' with your file name
+num_rows, num_cols = df.shape
+print(f"Number of rows: {num_rows}")
+print(f"Number of columns: {num_cols}")
+
+#### apple SMOTE on train data to manage the minority class
+import pandas as pd
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+
+y_train= pd.read_csv("y_train42a_with_index.csv")
+x_train = pd.read_csv("x_train42a_filtered1.csv")  # features (k-mers)
+
+print (x_train.head())
+print (y_train.head())
+x_train.set_index('genome', inplace=True)
+y_train.set_index('genome', inplace=True)
+
+print("after set.index")
+print (x_train.head())
+print (y_train.head())
+n_iterations = 50
+
+rs_d= [42]
+for i in rs_d:
+        print(i)
+#X_train, X_test1, y_train, y_test1 = train_test_split(X, y, test_size=0.2, random_state=i, stratify=y)
+X_resamp, y_resamp = SMOTE(random_state=92).fit_resample(x_train, y_train)
+print (X_resamp.head())
+print (y_resamp.head())
+X_resamp.to_csv("x_train42a_filtered_smote1.csv", index=False)
+y_resamp.to_csv("y_train42a_filtered_smote1.csv", index=False)
+
+##### now apply the <0.05 p value column to filter the test data and check the dimension of the result it must be match with train data
+import pandas as pd
+ # Load the k-mer matrix file
+kmer_matrix_df = pd.read_csv("x_test42a.csv")
+# Load the k-mer filter file (assuming it's a list of k-mers)
+filter_kmers = pd.read_csv("new_filtered_output1.csv", header=None)[0].tolist()
+#filtered_matrix_df = kmer_matrix_df.loc[kmer_matrix_df.index.isin(filter_kmers)]
+filtered_matrix_df = kmer_matrix_df.loc[:, ["genome"] + [k for k in filter_kmers if k in kmer_matrix_df.columns]]
+filtered_matrix_df.to_csv("x_test42a_filtered1.csv", index=False)
