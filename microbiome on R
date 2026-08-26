@@ -563,6 +563,1519 @@ cat("Relative abundance: fungi_phyloseq_relative.rds\n")
 cat("Decontam results:  decontam_results.csv\n")
 cat("Contamination summary: fungal_contamination_summary.csv\n")
 cat("Clean counts: fungi_species_counts_clean.csv\n")
+
+#######FOR FUNGI
+###alpha diversity
+library(vegan)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+library(vegan)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+abundance_file <- "fungi_species_relative_abundance_clean.csv"
+metadata_file  <- "metadata.csv"
+
+output_prefix <- "species"
+
+# ============================================================
+# 1. READ DATA
+# ============================================================
+
+abundance <- read.csv(
+  abundance_file,
+  row.names = 1,
+  check.names = FALSE
+)
+
+metadata <- read.csv(
+  metadata_file,
+  check.names = FALSE
+)
+
+cat("Abundance dimensions:\n")
+print(dim(abundance))
+
+cat("\nMetadata:\n")
+print(metadata)
+
+# ============================================================
+# 2. KEEP ONLY PATIENT SAMPLES
+# ============================================================
+
+patient_metadata <- metadata %>%
+  filter(Sample_Type == "Patient")
+
+cat("\nPatient samples:\n")
+print(patient_metadata)
+
+# ============================================================
+# 3. CHECK L2/L3
+# ============================================================
+
+cat("\nSite distribution:\n")
+print(table(patient_metadata$Site))
+
+cat("\nPatients:\n")
+print(table(patient_metadata$Patient))
+
+# ============================================================
+# 4. MATCH ABUNDANCE WITH METADATA
+# ============================================================
+
+common_samples <- intersect(
+  colnames(abundance),
+  patient_metadata$Sample
+)
+
+cat("\nCommon patient samples:", length(common_samples), "\n")
+
+if(length(common_samples) == 0) {
+  stop("No sample names match between abundance matrix and metadata.")
+}
+
+# Keep only patient samples
+abundance <- abundance[, common_samples, drop = FALSE]
+
+# Reorder metadata exactly like abundance columns
+patient_metadata <- patient_metadata[
+  match(common_samples, patient_metadata$Sample),
+]
+
+# Check
+cat("\nAbundance samples:\n")
+print(colnames(abundance))
+
+cat("\nMetadata samples:\n")
+print(patient_metadata$Barcode)
+
+# ============================================================
+# 5. CONVERT TO NUMERIC
+# ============================================================
+
+abundance <- as.data.frame(
+  lapply(abundance, as.numeric),
+  check.names = FALSE
+)
+
+rownames(abundance) <- rownames(
+  read.csv(
+    abundance_file,
+    row.names = 1,
+    check.names = FALSE
+  )
+)
+
+# ============================================================
+# 6. REMOVE TAXA WITH ZERO ABUNDANCE
+# ============================================================
+
+abundance <- abundance[
+  rowSums(abundance) > 0,
+  ,
+  drop = FALSE
+]
+
+cat("\nNumber of taxa:", nrow(abundance), "\n")
+cat("Number of samples:", ncol(abundance), "\n")
+
+# ============================================================
+# 7. TRANSPOSE
+# ============================================================
+
+# vegan requires:
+# rows = samples
+# columns = taxa
+
+otu <- t(as.matrix(abundance))
+
+# ============================================================
+# 8. ALPHA DIVERSITY
+# ============================================================
+
+alpha <- data.frame(
+  Sample = rownames(otu),
+  
+  Observed = specnumber(otu),
+  
+  Shannon = diversity(
+    otu,
+    index = "shannon"
+  ),
+  
+  Simpson = diversity(
+    otu,
+    index = "simpson"
+  )
+)
+
+# ============================================================
+# 9. ADD METADATA
+# ============================================================
+
+alpha <- alpha %>%
+  left_join(
+    patient_metadata,
+    by = "Sample"
+  )
+
+# Set order
+alpha$Site <- factor(
+  alpha$Site,
+  levels = c("L3", "L2")
+)
+
+# ============================================================
+# 10. SAVE ALPHA TABLE
+# ============================================================
+
+write.csv(
+  alpha,
+  paste0(output_prefix, "fungi_alpha_diversity.csv"),
+  row.names = FALSE
+)
+
+cat("\nAlpha diversity results:\n")
+print(alpha)
+
+# ============================================================
+# 11. PAIRED WILCOXON TESTS
+# ============================================================
+
+# ---------- Shannon ----------
+
+shannon_wide <- alpha %>%
+  select(Patient, Site, Shannon) %>%
+  pivot_wider(
+    names_from = Site,
+    values_from = Shannon
+  ) %>%
+  drop_na()
+
+cat("\nShannon paired data:\n")
+print(shannon_wide)
+
+shannon_test <- wilcox.test(
+  shannon_wide$L2,
+  shannon_wide$L3,
+  paired = TRUE,
+  exact = FALSE
+)
+
+cat("\n============================\n")
+cat("SHANNON PAIRED WILCOXON\n")
+cat("============================\n")
+print(shannon_test)
+
+
+# ---------- Observed richness ----------
+
+observed_wide <- alpha %>%
+  select(Patient, Site, Observed) %>%
+  pivot_wider(
+    names_from = Site,
+    values_from = Observed
+  ) %>%
+  drop_na()
+
+observed_test <- wilcox.test(
+  observed_wide$L2,
+  observed_wide$L3,
+  paired = TRUE,
+  exact = FALSE
+)
+
+cat("\n============================\n")
+cat("OBSERVED RICHNESS PAIRED WILCOXON\n")
+cat("============================\n")
+print(observed_test)
+
+
+# ---------- Simpson ----------
+
+simpson_wide <- alpha %>%
+  select(Patient, Site, Simpson) %>%
+  pivot_wider(
+    names_from = Site,
+    values_from = Simpson
+  ) %>%
+  drop_na()
+
+simpson_test <- wilcox.test(
+  simpson_wide$L2,
+  simpson_wide$L3,
+  paired = TRUE,
+  exact = FALSE
+)
+
+cat("\n============================\n")
+cat("SIMPSON PAIRED WILCOXON\n")
+cat("============================\n")
+print(simpson_test)
+
+# ============================================================
+# 12. SAVE P-VALUES
+# ============================================================
+
+stats <- data.frame(
+  Metric = c(
+    "Observed",
+    "Shannon",
+    "Simpson"
+  ),
+  
+  P_value = c(
+    observed_test$p.value,
+    shannon_test$p.value,
+    simpson_test$p.value
+  )
+)
+
+write.csv(
+  stats,
+  paste0(output_prefix, "fungi_alpha_statistics.csv"),
+  row.names = FALSE
+)
+
+alpha_long <- alpha %>%
+  select(
+    Patient,
+    Site,
+    Observed,
+    Shannon,
+    Simpson
+  ) %>%
+  pivot_longer(
+    cols = c(
+      Observed,
+      Shannon,
+      Simpson
+    ),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+# Order panels
+alpha_long$Metric <- factor(
+  alpha_long$Metric,
+  levels = c(
+    "Observed",
+    "Shannon",
+    "Simpson"
+  )
+)
+
+# ============================================================
+# 3. PLOT
+# ============================================================
+
+p <- ggplot(
+  alpha_long,
+  aes(
+    x = Site,
+    y = Value
+  )
+) +
+  
+  # Boxplot
+  geom_boxplot(
+    aes(fill = Site),
+    width = 0.55,
+    alpha = 0.75,
+    outlier.shape = NA,
+    color = "black",
+    linewidth = 0.7
+  ) +
+  
+  # Individual samples
+  geom_jitter(
+    width = 0.08,
+    size = 3,
+    shape = 21,
+    fill = "white",
+    color = "black",
+    stroke = 0.8
+  ) +
+  
+  # Separate panels
+  facet_wrap(
+    ~ Metric,
+    scales = "free_y",
+    nrow = 1
+  ) +
+  
+  # L2/L3 colors
+  scale_fill_manual(
+    values = c(
+      "L2\nLesion" = "#E69F00",
+      "L3\nNon-lesion" = "#0072B2"
+    )
+  ) +
+  
+  # Labels
+  labs(
+    title = "Alpha Diversity",
+    subtitle = "Lesion (L2) vs Non-lesion (L3)",
+    x = NULL,
+    y = NULL,
+    fill = "Site"
+  ) +
+  
+  # Theme similar to your example
+  theme_classic(
+    base_size = 14
+  ) +
+  
+  theme(
+    
+    plot.title = element_text(
+      size = 22,
+      face = "bold",
+      hjust = 0.5
+    ),
+    
+    plot.subtitle = element_text(
+      size = 14,
+      hjust = 0.5
+    ),
+    
+    strip.background = element_rect(
+      fill = "#E69F00",
+      color =  "#0072B2",
+      linewidth = 0.6
+    ),
+    
+    strip.text = element_text(
+      size = 14,
+      face = "bold"
+    ),
+    
+    axis.text = element_text(
+      size = 11,
+      face = "bold"
+    ),
+    
+    axis.text.x = element_text(
+      size = 11
+    ),
+    
+    legend.position = "right",
+    
+    legend.title = element_text(
+      face = "bold"
+    ),
+    
+    panel.grid.major.y = element_line(
+      color = "grey90",
+      linewidth = 0.4
+    ),
+    
+    panel.grid.minor = element_blank(),
+    
+    panel.spacing = unit(
+      1,
+      "lines"
+    )
+  )
+
+print(p)
+
+# ============================================================
+# 4. SAVE
+# ============================================================
+
+ggsave(
+  "fungi_Alpha_Diversity_L2_L3.png",
+  p,
+  width = 12,
+  height = 5.5,
+  dpi = 300
+)
+
+
+
+
+
+
+### BETA DIVERSITY
+
+# ============================================================
+# BETA DIVERSITY
+# L2 = LESION
+# L3 = NON-LESION
+# ============================================================
+
+library(vegan)
+library(ggplot2)
+library(dplyr)
+
+# ============================================================
+# 1. READ ABUNDANCE DATA
+# ============================================================
+
+abundance <- read.csv(
+  "fungi_species_relative_abundance_clean.csv",
+  row.names = 1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# Convert to numeric
+abundance[] <- lapply(
+  abundance,
+  function(x) as.numeric(as.character(x))
+)
+
+# Remove taxa with zero total abundance
+abundance <- abundance[
+  rowSums(abundance, na.rm = TRUE) > 0,
+  ,
+  drop = FALSE
+]
+
+cat("Taxa:", nrow(abundance), "\n")
+cat("Samples:", ncol(abundance), "\n")
+
+
+# ============================================================
+# 2. PATIENT SAMPLE BAR CODES
+# ============================================================
+metadata_new <- read.csv("metadata.csv", stringsAsFactors = FALSE)
+patient_samples <- c(
+  "barcode89", "barcode91", "barcode87", "barcode92", "barcode86", "barcode93", "barcode85", "barcode88", "barcode90", "barcode84"
+)
+
+abundance_patient <- abundance[
+  ,
+  patient_samples,
+  drop = FALSE
+]
+
+# Sample x taxa
+otu <- t(as.matrix(abundance_patient))
+
+# Relative abundance
+otu_rel <- sweep(
+  otu,
+  1,
+  rowSums(otu),
+  "/"
+)
+
+# ------------------------------------------------------------
+# Bray-Curtis
+# ------------------------------------------------------------
+
+bray <- vegdist(
+  otu_rel,
+  method = "bray"
+)
+
+# ------------------------------------------------------------
+# PCoA
+# ------------------------------------------------------------
+
+pcoa <- cmdscale(
+  bray,
+  k = 2,
+  eig = TRUE,
+  add = TRUE
+)
+
+# Variance
+eig <- pcoa$eig
+eig_pos <- eig[eig > 0]
+
+PC1 <- round(
+  100 * eig_pos[1] / sum(eig_pos),
+  1
+)
+
+PC2 <- round(
+  100 * eig_pos[2] / sum(eig_pos),
+  1
+)
+
+# ------------------------------------------------------------
+# PCoA dataframe
+# ------------------------------------------------------------
+
+pcoa_df <- data.frame(
+  Barcode = rownames(pcoa$points),
+  PC1 = pcoa$points[,1],
+  PC2 = pcoa$points[,2]
+)
+colnames(pcoa_df)
+colnames(metadata_new)
+
+
+# Metadata
+pcoa_df <- pcoa_df %>%
+  left_join(
+    metadata_new,
+    by = "Barcode"
+  )
+
+pcoa_df$Site <- factor(
+  pcoa_df$Site,
+  levels = c("L2", "L3")
+)
+
+print(pcoa_df)
+
+
+
+site_colors <- c(
+  "L2" = "#E69F00",
+  "L3" = "#0072B2"
+)
+
+ggplot(
+  pcoa_df,
+  aes(
+    PC1,
+    PC2
+  )
+) +
+  
+  # L2-L3 paired connection
+  geom_line(
+    aes(
+      group = Patient
+    ),
+    color = "grey60",
+    linewidth = 0.8,
+    alpha = 0.7
+  ) +
+  
+  # Samples
+  geom_point(
+    aes(
+      color = Site,
+      shape = Site
+    ),
+    size = 5
+  ) +
+  
+  # Patient names
+  geom_text(
+    aes(
+      label = Patient
+    ),
+    vjust = -1.1,
+    size = 3.5
+  ) +
+  
+  scale_color_manual(
+    values = site_colors
+  ) +
+  
+  scale_shape_manual(
+    values = c(
+      "L2" = 16,
+      "L3" = 17
+    )
+  ) +
+  
+  labs(
+    title = "Beta Diversity – Bray-Curtis PCoA",
+    subtitle = "species-level community composition",
+    x = paste0("PCoA1 (", PC1, "%)"),
+    y = paste0("PCoA2 (", PC2, "%)"),
+    color = "Site",
+    shape = "Site"
+  ) +
+  
+  theme_classic(
+    base_size = 15
+  ) +
+  
+  theme(
+    plot.title = element_text(
+      size = 22,
+      face = "bold",
+      hjust = 0.5
+    ),
+    plot.subtitle = element_text(
+      size = 14,
+      hjust = 0.5
+    ),
+    legend.position = "right"
+  )
+p <- ggplot(
+  pcoa_df,
+  aes(
+    PC1,
+    PC2,
+    color = Site
+  )
+) +
+  
+  stat_ellipse(
+    aes(group = Site),
+    type = "t",
+    level = 0.68,
+    linewidth = 1.2
+  ) +
+  
+  geom_point(
+    aes(shape = Site),
+    size = 5
+  ) +
+  
+  geom_line(
+    aes(group = Patient),
+    color = "grey60",
+    alpha = 0.6,
+    linewidth = 0.8
+  ) +
+  
+  scale_color_manual(
+    values = c(
+      "L2" = "#E69F00",
+      "L3" = "#0072B2"
+    )
+  ) +
+  
+  labs(
+    title = "Bray-Curtis PCoA",
+    subtitle = "L2 Lesion vs L3 Non-lesion",
+    x = paste0("PCoA1 (", PC1, "%)"),
+    y = paste0("PCoA2 (", PC2, "%)")
+  ) +
+  
+  theme_classic(
+    base_size = 15
+  )
+
+# Show
+print(p)
+
+# Save
+ggsave(
+  "fungi_Beta_Diversity_BrayCurtis_PCoA_ellipse.png",
+  p,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+write.csv(
+  pcoa_df,
+  "fungi_PCoA_coordinates.csv",
+  row.names = FALSE
+)
+
+write.csv(
+  as.matrix(bray),
+  "fungi_BrayCurtis_distance.csv"
+)
+
+capture.output(
+  permanova,
+  file = "fungi_PERMANOVA.txt"
+)
+
+capture.output(
+  dispersion_test,
+  file = "fungio_BetaDispersion.txt"
+)
+
+
+
+####GENUS ABUNDANCE
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+
+# ============================================================
+# 1. READ GENUS ABUNDANCE
+# ============================================================
+
+abundance <- read.csv(
+  "fungi_species_relative_abundance_clean.csv",
+  row.names = 1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# Convert to numeric
+abundance[] <- lapply(
+  abundance,
+  function(x) as.numeric(as.character(x))
+)
+
+# Remove taxa with zero counts
+abundance <- abundance[
+  rowSums(abundance, na.rm = TRUE) > 0,
+  ,
+  drop = FALSE
+]
+
+cat("Number of genera:", nrow(abundance), "\n")
+cat("Number of samples:", ncol(abundance), "\n")
+
+
+# ============================================================
+# 2. PATIENT SAMPLES ONLY
+# ============================================================
+patient_samples <- c(
+  "barcode89", "barcode91", "barcode87", "barcode92", "barcode86", "barcode93", "barcode85", "barcode88", "barcode90", "barcode84"
+)
+
+abundance_patient <- abundance[
+  ,
+  patient_samples,
+  drop = FALSE
+]
+
+
+# ============================================================
+# 3. READ METADATA
+# ============================================================
+
+metadata <- read.csv(
+  "metadata.csv",
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+metadata$Barcode <- tolower(
+  trimws(metadata$Barcode)
+)
+
+metadata$Patient <- trimws(
+  metadata$Patient
+)
+
+metadata$Site <- trimws(
+  metadata$Site
+)
+
+metadata$Sample_Type <- trimws(
+  metadata$Sample_Type
+)
+
+
+# ============================================================
+# 4. KEEP PATIENT SAMPLES
+# ============================================================
+
+metadata_patient <- metadata %>%
+  filter(
+    Sample_Type == "Patient"
+  )
+
+# Match metadata to abundance
+metadata_patient <- metadata_patient[
+  match(
+    patient_samples,
+    metadata_patient$Barcode
+  ),
+  ,
+  drop = FALSE
+]
+
+
+# ============================================================
+# 5. CHECK
+# ============================================================
+
+print(
+  metadata_patient[
+    ,
+    c(
+      "Sample",
+      "Barcode",
+      "Patient",
+      "Site"
+    )
+  ]
+)
+
+if (
+  !all(
+    patient_samples ==
+    metadata_patient$Barcode
+  )
+) {
+  stop(
+    "Barcode order does not match!"
+  )
+}
+
+cat(
+  "\nSUCCESS: 10 patient samples matched.\n"
+)
+# ============================================================
+# STEP 2: L2 vs L3 GENUS ABUNDANCE
+# ============================================================
+
+# Convert abundance to relative abundance (%)
+abundance_rel <- sweep(
+  abundance_patient,
+  2,
+  colSums(abundance_patient),
+  "/"
+) * 100
+
+
+# ============================================================
+# Create long-format table
+# ============================================================
+
+species_long <- abundance_rel %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("species") %>%
+  pivot_longer(
+    cols = -species,
+    names_to = "Barcode",
+    values_to = "Relative_Abundance"
+  )
+
+
+# ============================================================
+# Add metadata
+# ============================================================
+
+species_long <- species_long %>%
+  left_join(
+    metadata_patient[
+      ,
+      c("Barcode", "Patient", "Site")
+    ],
+    by = "Barcode"
+  )
+
+
+# ============================================================
+# Calculate mean abundance in L2 and L3
+# ============================================================
+
+species_summary <- species_long %>%
+  group_by(species, Site) %>%
+  summarise(
+    Mean_Abundance = mean(
+      Relative_Abundance,
+      na.rm = TRUE
+    ),
+    Median_Abundance = median(
+      Relative_Abundance,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+
+# ============================================================
+# Convert L2/L3 into columns
+# ============================================================
+
+species_wide <- species_summary %>%
+  select(
+    species,
+    Site,
+    Mean_Abundance
+  ) %>%
+  pivot_wider(
+    names_from = Site,
+    values_from = Mean_Abundance,
+    values_fill = 0
+  )
+
+
+# ============================================================
+# Calculate difference
+# ============================================================
+
+species_wide <- species_wide %>%
+  mutate(
+    Difference_L2_L3 = L2 - L3,
+    
+    Enriched = case_when(
+      Difference_L2_L3 > 0 ~ "L2",
+      Difference_L2_L3 < 0 ~ "L3",
+      TRUE ~ "Equal"
+    )
+  )
+
+
+# ============================================================
+# Sort by largest difference
+# ============================================================
+
+species_wide <- species_wide %>%
+  arrange(
+    desc(abs(Difference_L2_L3))
+  )
+
+
+# ============================================================
+# View results
+# ============================================================
+
+print(
+  head(
+    species_wide,
+    30
+  )
+)
+write.csv(
+  species_wide,
+  "fungi_L2_L3_Abundance_Summary.csv",
+  row.names = FALSE
+)
+
+
+# ============================================================
+# STEP 3: PAIRED WILCOXON TEST FOR EVERY GENUS
+# ============================================================
+
+species_test <- species_long %>%
+  group_by(species) %>%
+  group_modify(~ {
+    
+    # Convert to patient × site format
+    temp <- .x %>%
+      select(Patient, Site, Relative_Abundance) %>%
+      pivot_wider(
+        names_from = Site,
+        values_from = Relative_Abundance
+      )
+    
+    # Need both L2 and L3
+    if(
+      !"L2" %in% colnames(temp) ||
+      !"L3" %in% colnames(temp)
+    ) {
+      return(
+        data.frame(
+          L2_Median = NA,
+          L3_Median = NA,
+          Difference = NA,
+          P_value = NA
+        )
+      )
+    }
+    
+    # Remove incomplete pairs
+    temp <- temp %>%
+      filter(
+        !is.na(L2),
+        !is.na(L3)
+      )
+    
+    # Paired Wilcoxon
+    if(nrow(temp) < 2) {
+      
+      p <- NA
+      
+    } else {
+      
+      p <- wilcox.test(
+        temp$L2,
+        temp$L3,
+        paired = TRUE,
+        exact = FALSE
+      )$p.value
+    }
+    
+    data.frame(
+      L2_Median = median(temp$L2, na.rm = TRUE),
+      L3_Median = median(temp$L3, na.rm = TRUE),
+      Difference = median(
+        temp$L2 - temp$L3,
+        na.rm = TRUE
+      ),
+      P_value = p
+    )
+  }) %>%
+  ungroup()
+
+
+# ============================================================
+# FDR CORRECTION
+# ============================================================
+
+species_test <- species_test %>%
+  mutate(
+    FDR = p.adjust(
+      P_value,
+      method = "BH"
+    )
+  )
+
+
+# ============================================================
+# ADD ENRICHMENT DIRECTION
+# ============================================================
+
+species_test <- species_test %>%
+  mutate(
+    Enriched = case_when(
+      
+      Difference > 0 ~ "L2",
+      
+      Difference < 0 ~ "L3",
+      
+      TRUE ~ "Equal"
+    )
+  )
+
+
+# ============================================================
+# SORT BY FDR
+# ============================================================
+
+species_test <- species_test %>%
+  arrange(FDR)
+
+
+# ============================================================
+# VIEW RESULTS
+# ============================================================
+
+print(
+  head(
+    species_test,
+    30
+  )
+)
+significant_species <- species_test %>%
+  filter(
+    FDR < 0.05
+  )
+
+print(significant_species)
+cat(
+  "Number of significant species:",
+  nrow(significant_species),
+  "\n"
+)
+
+
+# ============================================================
+# STEP 4: TOP DIFFERENTIALLY ABUNDANT GENERA
+# ============================================================
+
+top_species <- species_test %>%
+  filter(
+    !is.na(Difference)
+  ) %>%
+  arrange(
+    desc(abs(Difference))
+  ) %>%
+  slice_head(n = 15)
+
+print(top_species)
+
+write.csv(
+  top_species,
+  "Top_15_fungi_L2_L3.csv",
+  row.names = FALSE
+)
+library(ggplot2)
+
+top_species$species <- factor(
+  top_species$species,
+  levels = rev(top_species$species)
+)
+
+p_top <- ggplot(
+  top_species,
+  aes(
+    x = Difference,
+    y = species,
+    fill = Enriched
+  )
+) +
+  
+  geom_col(
+    width = 0.7
+  ) +
+  
+  geom_vline(
+    xintercept = 0,
+    linewidth = 0.8
+  ) +
+  
+  scale_fill_manual(
+    values = c(
+      "L2" = "#E69F00",
+      "L3" = "#0072B2",
+      "Equal" = "grey70"
+    )
+  ) +
+  
+  labs(
+    title = "Top species-level Differences",
+    subtitle = "L2 (Lesion) vs L3 (Non-lesion)",
+    x = "Median abundance difference (L2 − L3)",
+    y = NULL,
+    fill = "Enriched in"
+  ) +
+  
+  theme_classic(
+    base_size = 14
+  ) +
+  
+  theme(
+    plot.title = element_text(
+      size = 20,
+      face = "bold",
+      hjust = 0.5
+    ),
+    plot.subtitle = element_text(
+      size = 13,
+      hjust = 0.5
+    ),
+    axis.text.y = element_text(
+      face = "italic"
+    )
+  )
+
+print(p_top)
+
+ggsave(
+  "Top_15_fungi_L2_L3.png",
+  p_top,
+  width = 10,
+  height = 7,
+  dpi = 300
+)
+
+
+
+
+# ============================================================
+# CONTROL ANALYSIS
+# STEP 1: PREPARE ALL SAMPLES
+
+
+# ============================================================
+# CONTROL / CONTAMINATION ANALYSIS
+# STEP 1: PREPARE ALL SAMPLES
+# ============================================================
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# ------------------------------------------------------------
+# Read genus abundance
+# ------------------------------------------------------------
+
+abundance <- read.csv(
+  "fungi_species_relative_abundance_clean.csv",
+  row.names = 1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# Convert to numeric
+abundance[] <- lapply(
+  abundance,
+  function(x) as.numeric(as.character(x))
+)
+
+# Remove taxa absent from all samples
+abundance <- abundance[
+  rowSums(abundance, na.rm = TRUE) > 0,
+  ,
+  drop = FALSE
+]
+
+# ------------------------------------------------------------
+# All 13 samples
+# ------------------------------------------------------------
+
+all_samples <- paste0(
+  "barcode",
+  sprintf("%02d", 84:96)
+)
+
+abundance_all <- abundance[
+  ,
+  all_samples,
+  drop = FALSE
+]
+
+cat(
+  "Number of taxa:",
+  nrow(abundance_all),
+  "\n"
+)
+
+cat(
+  "Number of samples:",
+  ncol(abundance_all),
+  "\n"
+)
+
+# ------------------------------------------------------------
+# Read metadata
+# ------------------------------------------------------------
+
+metadata <- read.csv(
+  "metadata.csv",
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+metadata$Barcode <- tolower(
+  trimws(metadata$Barcode)
+)
+
+metadata$Sample_Type <- trimws(
+  metadata$Sample_Type
+)
+
+metadata$Patient <- trimws(
+  metadata$Patient
+)
+
+metadata$Site <- trimws(
+  metadata$Site
+)
+
+# ------------------------------------------------------------
+# Match metadata to abundance
+# ------------------------------------------------------------
+
+metadata_all <- metadata[
+  match(
+    all_samples,
+    metadata$Barcode
+  ),
+  ,
+  drop = FALSE
+]
+
+# Check
+print(
+  metadata_all[
+    ,
+    c(
+      "Sample",
+      "Barcode",
+      "Patient",
+      "Site",
+      "Sample_Type"
+    )
+  ]
+)
+
+# ------------------------------------------------------------
+# Check matching
+# ------------------------------------------------------------
+
+if (
+  !all(
+    all_samples ==
+    metadata_all$Barcode
+  )
+) {
+  stop(
+    "Barcode order does not match metadata!"
+  )
+}
+
+cat(
+  "\nAll 13 samples matched successfully.\n"
+)
+
+
+
+# ============================================================
+# STEP 2: RELATIVE ABUNDANCE
+# ============================================================
+
+abundance_rel_all <- sweep(
+  abundance_all,
+  2,
+  colSums(abundance_all),
+  "/"
+) * 100
+
+# Convert to long format
+control_long <- abundance_rel_all %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("Genus") %>%
+  pivot_longer(
+    cols = -Genus,
+    names_to = "Barcode",
+    values_to = "Relative_Abundance"
+  )
+
+# Add metadata
+control_long <- control_long %>%
+  left_join(
+    metadata_all[
+      ,
+      c(
+        "Barcode",
+        "Sample",
+        "Patient",
+        "Site",
+        "Sample_Type"
+      )
+    ],
+    by = "Barcode"
+  )
+
+print(
+  head(control_long)
+)
+
+print(control_long)
+
+
+# ============================================================
+# STEP 3: SAMPLE COMPOSITION
+# ============================================================
+
+sample_summary <- control_long %>%
+  group_by(
+    Barcode,
+    Sample,
+    Sample_Type
+  ) %>%
+  summarise(
+    Total_Abundance = sum(
+      Relative_Abundance,
+      na.rm = TRUE
+    ),
+    Number_of_Genera = sum(
+      Relative_Abundance > 0
+    ),
+    .groups = "drop"
+  )
+
+print(sample_summary)
+
+# ============================================================
+# STEP 4: TOP GENERA IN CONTROLS
+# ===========================================================
+
+# ============================================================
+# TOP 10 GENERA FOR EACH CONTROL
+# ============================================================
+
+control_top10 <- control_long %>%
+  filter(
+    Barcode %in% c(
+      "barcode94",   # Environmental
+      "barcode95",   # Positive
+      "barcode96"    # Negative
+    )
+  ) %>%
+  group_by(
+    Sample_Type,
+    Genus
+  ) %>%
+  summarise(
+    Mean_Abundance = mean(
+      Relative_Abundance,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  ) %>%
+  group_by(Sample_Type) %>%
+  slice_max(
+    order_by = Mean_Abundance,
+    n = 10,
+    with_ties = FALSE
+  ) %>%
+  ungroup()
+
+print(control_top10)
+
+
+# ============================================================
+# PLOT TOP 10 GENERA ONLY
+# ============================================================
+
+p_control <- ggplot(
+  control_top10,
+  aes(
+    x = reorder(Genus, Mean_Abundance),
+    y = Mean_Abundance,
+    fill = Sample_Type
+  )
+) +
+  
+  geom_col(
+    width = 0.7
+  ) +
+  
+  coord_flip() +
+  
+  facet_wrap(
+    ~ Sample_Type,
+    scales = "free_y"
+  ) +
+  
+  labs(
+    title = "Top 10 Species in Control Samples",
+    subtitle = "Environmental, positive and negative controls",
+    x = "Genus",
+    y = "Relative abundance (%)"
+  ) +
+  
+  theme_classic(
+    base_size = 14
+  ) +
+  
+  theme(
+    plot.title = element_text(
+      size = 20,
+      face = "bold",
+      hjust = 0.5
+    ),
+    
+    plot.subtitle = element_text(
+      size = 13,
+      hjust = 0.5
+    ),
+    
+    axis.text.y = element_text(
+      face = "italic",
+      size = 11
+    ),
+    
+    axis.text.x = element_text(
+      size = 11
+    ),
+    
+    legend.position = "none",
+    
+    strip.text = element_text(
+      size = 13,
+      face = "bold"
+    )
+  )
+
+print(p_control)
+
+
+ggsave(
+  "fungi_Control_Top10_species.png",
+  p_control,
+  width = 12,
+  height = 7,
+  dpi = 300
+)
+
 cat("Clean relative abundance: fungi_species_relative_abundance_clean.csv\n")
 cat("========================================\n")
 
