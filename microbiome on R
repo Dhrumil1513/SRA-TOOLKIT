@@ -1,0 +1,569 @@
+
+## Decantam packege
+############################
+# 2. INPUT FILES
+############################
+
+count_file <- "fungi-species-count.csv"
+metadata_file <- "metadata.csv"
+
+
+############################
+# 3. READ METADATA
+############################
+
+metadata <- read.csv(
+  metadata_file,
+  row.names = 1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+# Barcode becomes sample name
+rownames(metadata) <- metadata$Barcode
+
+# Remove Barcode column because it is now row names
+metadata$Barcode <- NULL
+
+cat("\n===== METADATA =====\n")
+print(metadata)
+
+cat("\n===== SAMPLE TYPES =====\n")
+print(table(metadata$Sample_Type))
+
+
+############################
+# 4. READ COUNT TABLE
+############################
+
+fungi <- read.csv(
+  count_file,
+  row.names = 1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+cat("\n===== COUNT TABLE =====\n")
+cat("Rows:", nrow(fungi), "\n")
+cat("Columns:", ncol(fungi), "\n")
+
+
+############################
+# 5. FIND BARCODE COLUMNS
+############################
+
+barcode_cols <- grep(
+  "^barcode[0-9]+$",
+  colnames(bacteria),
+  value = TRUE
+)
+
+cat("\nBarcode columns found:\n")
+print(barcode_cols)
+
+
+############################
+# 6. CHECK THAT ALL METADATA
+#    SAMPLES EXIST IN COUNT TABLE
+############################
+
+missing_samples <- setdiff(
+  rownames(metadata),
+  barcode_cols
+)
+
+if (length(missing_samples) > 0) {
+  
+  cat("\nERROR: These metadata samples are missing:\n")
+  print(missing_samples)
+  
+  stop("Sample names do not match.")
+  
+}
+
+
+############################
+# 7. REORDER COUNT TABLE
+#    TO MATCH METADATA
+############################
+
+fungi_cols <- rownames(metadata)
+
+fungi_counts <- fungi[
+  ,
+  barcode_cols,
+  drop = FALSE
+]
+
+
+############################
+# 8. CONVERT ABUNDANCE TO NUMERIC
+############################
+
+fungi_counts[] <- lapply(
+  fungi_counts,
+  function(x) as.numeric(as.character(x))
+)
+
+
+############################
+# 9. REPLACE NA WITH ZERO
+############################
+
+fungi_counts[is.na(fungi_counts)] <- 0
+
+
+cat("\nNA values remaining:\n")
+print(sum(is.na(fungi_counts)))
+
+
+############################
+# 10. REMOVE TAXA WITH ZERO
+#     ABUNDANCE IN ALL SAMPLES
+############################
+
+keep_taxa <- rowSums(fungi_counts) > 0
+
+fungi_counts <- fungi_counts[
+  keep_taxa,
+  ,
+  drop = FALSE
+]
+
+fungi <- fungi[
+  rownames(fungi_counts),
+  ,
+  drop = FALSE
+]
+
+cat("\nTaxa after removing all-zero taxa:",
+    nrow(fungi_counts), "\n")
+
+
+############################
+# 11. CREATE OTU TABLE
+############################
+library(phyloseq)
+OTU <- otu_table(
+  as.matrix(fungi_counts),
+  taxa_are_rows = TRUE
+)
+
+
+############################
+# 12. CREATE TAXONOMY TABLE
+############################
+
+tax_cols <- intersect(
+  c(
+    "superkingdom",
+    "phylum",
+    "class",
+    "order",
+    "family",
+    "genus"
+  ),
+  colnames(fungi)
+)
+
+taxonomy <- fungi[
+  ,
+  tax_cols,
+  drop = FALSE
+]
+
+taxonomy[] <- lapply(
+  taxonomy,
+  as.character
+)
+
+rownames(taxonomy) <- rownames(fungi)
+tax_matrix <- as.matrix(taxonomy)
+
+storage.mode(tax_matrix) <- "character"
+
+TAX <- phyloseq::tax_table(tax_matrix)
+#TAX <- tax_table(
+# as.matrix(taxonomy)
+#)
+
+class(TAX)
+dim(TAX)
+############################
+# 13. CREATE SAMPLE DATA
+############################
+
+SAM <- sample_data(metadata)
+
+
+############################
+# 14. CREATE PHYLOSEQ OBJECT
+############################
+dim(OTU)
+dim(TAX)
+dim(SAM)
+identical(
+  rownames(OTU),
+  rownames(TAX)
+)
+identical(
+  sample_names(OTU),
+  rownames(SAM)
+)
+length(taxa_names(OTU))
+length(taxa_names(TAX))
+anyDuplicated(rownames(OTU))
+anyDuplicated(rownames(TAX))
+anyDuplicated(rownames(metadata))
+
+ps <- phyloseq(
+  OTU,
+  TAX,
+  SAM
+)
+
+cat("\n===== PHYLOSEQ OBJECT =====\n")
+print(ps)
+
+cat("\nNumber of taxa:", ntaxa(ps), "\n")
+cat("Number of samples:", nsamples(ps), "\n")
+
+
+############################
+# 15. IDENTIFY NEGATIVE CONTROL
+############################
+
+if (!"Negative_Control" %in% metadata$Sample_Type) {
+  
+  stop("No Negative_Control found in metadata.")
+  
+}
+
+sample_data(ps)$is.neg <-
+  sample_data(ps)$Sample_Type == "Negative_Control"
+
+
+cat("\n===== NEGATIVE CONTROL =====\n")
+print(
+  sample_data(ps)$Sample_Type
+)
+
+print(
+  table(sample_data(ps)$is.neg)
+)
+
+
+############################
+# 16. RUN DECONTAM
+############################
+library(decontam)
+contam <- isContaminant(
+  ps,
+  method = "prevalence",
+  neg = "is.neg"
+)
+
+
+############################
+# 17. CONTAMINATION SUMMARY
+############################
+
+cat("\n===== DECONTAM RESULT =====\n")
+
+print(
+  table(contam$contaminant)
+)
+
+
+############################
+# 18. MAKE CONTAMINATION TABLE
+############################
+
+contaminant_results <- data.frame(
+  Taxon = taxa_names(ps),
+  contam,
+  stringsAsFactors = FALSE
+)
+
+write.csv(
+  contaminant_results,
+  "fungi_decontam_results.csv",
+  row.names = FALSE
+)
+
+
+############################
+# 19. GET FLAGGED TAXA
+############################
+
+contaminant_taxa <- taxa_names(ps)[
+  contam$contaminant
+]
+
+cat("\n===== POTENTIAL CONTAMINANTS =====\n")
+
+print(contaminant_taxa)
+
+
+############################
+# 20. CHECK CONTROL ABUNDANCE
+############################
+
+otu <- as.data.frame(
+  otu_table(ps)
+)
+
+control_samples <- rownames(metadata)[
+  metadata$Sample_Type %in%
+    c(
+      "Negative_Control",
+      "Environmental",
+      "Positive_Control"
+    )
+]
+
+cat("\n===== CONTROL SAMPLES =====\n")
+print(control_samples)
+
+
+############################
+# 21. MAKE PATIENT PREVALENCE
+############################
+
+patient_samples <- rownames(metadata)[
+  metadata$Sample_Type == "Patient"
+]
+
+patient_prevalence <- rowSums(
+  otu[
+    ,
+    patient_samples,
+    drop = FALSE
+  ] > 0
+)
+
+patient_prevalence_percent <-
+  patient_prevalence /
+  length(patient_samples) * 100
+
+
+############################
+# 22. CONTROL ABUNDANCES
+############################
+
+negative_samples <- rownames(metadata)[
+  metadata$Sample_Type ==
+    "Negative_Control"
+]
+
+environment_samples <- rownames(metadata)[
+  metadata$Sample_Type ==
+    "Environmental"
+]
+
+positive_samples <- rownames(metadata)[
+  metadata$Sample_Type ==
+    "Positive_Control"
+]
+
+
+# Handle possibility of no control
+# or multiple controls
+
+negative_abundance <- rowSums(
+  otu[
+    ,
+    negative_samples,
+    drop = FALSE
+  ]
+)
+
+environment_abundance <- rowSums(
+  otu[
+    ,
+    environment_samples,
+    drop = FALSE
+  ]
+)
+
+positive_abundance <- rowSums(
+  otu[
+    ,
+    positive_samples,
+    drop = FALSE
+  ]
+)
+
+
+############################
+# 23. FINAL CONTAMINATION
+#     SCREENING TABLE
+############################
+
+summary_table <- data.frame(
+  
+  Taxon = rownames(otu),
+  
+  Patient_Prevalence =
+    patient_prevalence,
+  
+  Patient_Prevalence_Percent =
+    patient_prevalence_percent,
+  
+  Negative_Control_Abundance =
+    negative_abundance,
+  
+  Environmental_Control_Abundance =
+    environment_abundance,
+  
+  Positive_Control_Abundance =
+    positive_abundance,
+  
+  Decontam_Contaminant =
+    contam$contaminant,
+  
+  stringsAsFactors = FALSE
+)
+
+
+############################
+# 24. SAVE SUMMARY
+############################
+
+write.csv(
+  summary_table,
+  "fungi_contamination_summary.csv",
+  row.names = FALSE
+)
+
+
+############################
+# 25. DISPLAY POTENTIAL
+#     CONTAMINANTS
+############################
+
+cat("\n===== POTENTIAL CONTAMINANTS + CONTROL INFORMATION =====\n")
+
+print(
+  summary_table[
+    summary_table$Decontam_Contaminant == TRUE,
+  ]
+)
+
+
+
+############################################################
+# 26. REMOVE DECONTAM-FLAGGED TAXA
+#
+# IMPORTANT:
+# This creates a NEW object.
+# Original ps is NOT modified.
+############################################################
+
+ps_clean <- prune_taxa(
+  !taxa_names(ps) %in% contaminant_taxa,
+  ps
+)
+
+
+############################
+# 27. CHECK CLEAN DATA
+############################
+
+cat("\n===== CLEAN DATA =====\n")
+
+cat(
+  "Original taxa:",
+  ntaxa(ps),
+  "\n"
+)
+
+cat(
+  "Clean taxa:",
+  ntaxa(ps_clean),
+  "\n"
+)
+
+cat(
+  "Removed taxa:",
+  ntaxa(ps) - ntaxa(ps_clean),
+  "\n"
+)
+
+
+############################
+# 28. SAVE CLEAN COUNT TABLE
+############################
+
+clean_counts <- as.data.frame(
+  otu_table(ps_clean)
+)
+
+write.csv(
+  clean_counts,
+  "fungi_species_counts_clean.csv"
+)
+
+
+############################
+# 29. RELATIVE ABUNDANCE
+############################
+
+ps_relative <- transform_sample_counts(
+  ps_clean,
+  function(x) {
+    if (sum(x) == 0)
+      return(x)
+    
+    x / sum(x)
+  }
+)
+
+
+############################
+# 30. SAVE RELATIVE ABUNDANCE
+############################
+
+relative_abundance <- as.data.frame(
+  otu_table(ps_relative)
+)
+
+write.csv(
+  relative_abundance,
+  "fungi_species_relative_abundance_clean.csv"
+)
+
+
+############################
+# 31. SAVE PHYLOSEQ OBJECTS
+############################
+
+saveRDS(
+  ps,
+  "fungi_phyloseq_original.rds"
+)
+
+saveRDS(
+  ps_clean,
+  "fungi_phyloseq_clean.rds"
+)
+
+saveRDS(
+  ps_relative,
+  "fungi_phyloseq_relative.rds"
+)
+
+
+cat("\n========================================\n")
+cat("      PIPELINE COMPLETED\n")
+cat("========================================\n")
+cat("Original phyloseq: fungi_phyloseq_original.rds\n")
+cat("Clean phyloseq:    fungi_phyloseq_clean.rds\n")
+cat("Relative abundance: fungi_phyloseq_relative.rds\n")
+cat("Decontam results:  decontam_results.csv\n")
+cat("Contamination summary: fungal_contamination_summary.csv\n")
+cat("Clean counts: fungi_species_counts_clean.csv\n")
+cat("Clean relative abundance: fungi_species_relative_abundance_clean.csv\n")
+cat("========================================\n")
+
+
