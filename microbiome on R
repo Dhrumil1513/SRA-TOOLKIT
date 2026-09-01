@@ -1,16 +1,8 @@
 
 ## Decantam packege
-############################
-# 2. INPUT FILES
-############################
-
+##INPUT FILES
 count_file <- "fungi-species-count.csv"
 metadata_file <- "metadata.csv"
-
-
-############################
-# 3. READ METADATA
-############################
 
 metadata <- read.csv(
   metadata_file,
@@ -25,17 +17,10 @@ rownames(metadata) <- metadata$Barcode
 # Remove Barcode column because it is now row names
 metadata$Barcode <- NULL
 
-cat("\n===== METADATA =====\n")
 print(metadata)
 
-cat("\n===== SAMPLE TYPES =====\n")
 print(table(metadata$Sample_Type))
-
-
-############################
-# 4. READ COUNT TABLE
-############################
-
+##READ THE INPUT FILE
 fungi <- read.csv(
   count_file,
   row.names = 1,
@@ -47,11 +32,6 @@ cat("\n===== COUNT TABLE =====\n")
 cat("Rows:", nrow(fungi), "\n")
 cat("Columns:", ncol(fungi), "\n")
 
-
-############################
-# 5. FIND BARCODE COLUMNS
-############################
-
 barcode_cols <- grep(
   "^barcode[0-9]+$",
   colnames(bacteria),
@@ -60,12 +40,7 @@ barcode_cols <- grep(
 
 cat("\nBarcode columns found:\n")
 print(barcode_cols)
-
-
-############################
-# 6. CHECK THAT ALL METADATA
-#    SAMPLES EXIST IN COUNT TABLE
-############################
+##COMPARE IDS WITH METADATA
 
 missing_samples <- setdiff(
   rownames(metadata),
@@ -81,12 +56,6 @@ if (length(missing_samples) > 0) {
   
 }
 
-
-############################
-# 7. REORDER COUNT TABLE
-#    TO MATCH METADATA
-############################
-
 fungi_cols <- rownames(metadata)
 
 fungi_counts <- fungi[
@@ -95,32 +64,16 @@ fungi_counts <- fungi[
   drop = FALSE
 ]
 
-
-############################
-# 8. CONVERT ABUNDANCE TO NUMERIC
-############################
-
 fungi_counts[] <- lapply(
   fungi_counts,
   function(x) as.numeric(as.character(x))
 )
-
-
-############################
-# 9. REPLACE NA WITH ZERO
-############################
 
 fungi_counts[is.na(fungi_counts)] <- 0
 
 
 cat("\nNA values remaining:\n")
 print(sum(is.na(fungi_counts)))
-
-
-############################
-# 10. REMOVE TAXA WITH ZERO
-#     ABUNDANCE IN ALL SAMPLES
-############################
 
 keep_taxa <- rowSums(fungi_counts) > 0
 
@@ -139,20 +92,13 @@ fungi <- fungi[
 cat("\nTaxa after removing all-zero taxa:",
     nrow(fungi_counts), "\n")
 
-
-############################
-# 11. CREATE OTU TABLE
-############################
+##OTU TABLE
 library(phyloseq)
 OTU <- otu_table(
   as.matrix(fungi_counts),
   taxa_are_rows = TRUE
 )
-
-
-############################
-# 12. CREATE TAXONOMY TABLE
-############################
+##TAXONOMY TABLE
 
 tax_cols <- intersect(
   c(
@@ -189,16 +135,9 @@ TAX <- phyloseq::tax_table(tax_matrix)
 
 class(TAX)
 dim(TAX)
-############################
-# 13. CREATE SAMPLE DATA
-############################
 
 SAM <- sample_data(metadata)
-
-
-############################
-# 14. CREATE PHYLOSEQ OBJECT
-############################
+##PHYROSEQ OBJECT
 dim(OTU)
 dim(TAX)
 dim(SAM)
@@ -227,11 +166,7 @@ print(ps)
 
 cat("\nNumber of taxa:", ntaxa(ps), "\n")
 cat("Number of samples:", nsamples(ps), "\n")
-
-
-############################
-# 15. IDENTIFY NEGATIVE CONTROL
-############################
+## FIND NC
 
 if (!"Negative_Control" %in% metadata$Sample_Type) {
   
@@ -252,10 +187,6 @@ print(
   table(sample_data(ps)$is.neg)
 )
 
-
-############################
-# 16. RUN DECONTAM
-############################
 library(decontam)
 contam <- isContaminant(
   ps,
@@ -264,20 +195,12 @@ contam <- isContaminant(
 )
 
 
-############################
-# 17. CONTAMINATION SUMMARY
-############################
-
 cat("\n===== DECONTAM RESULT =====\n")
 
 print(
   table(contam$contaminant)
 )
-
-
-############################
-# 18. MAKE CONTAMINATION TABLE
-############################
+#MAKE THE TABLE 
 
 contaminant_results <- data.frame(
   Taxon = taxa_names(ps),
@@ -290,11 +213,7 @@ write.csv(
   "fungi_decontam_results.csv",
   row.names = FALSE
 )
-
-
-############################
-# 19. GET FLAGGED TAXA
-############################
+##FIND CONTAMINANTS
 
 contaminant_taxa <- taxa_names(ps)[
   contam$contaminant
@@ -304,10 +223,6 @@ cat("\n===== POTENTIAL CONTAMINANTS =====\n")
 
 print(contaminant_taxa)
 
-
-############################
-# 20. CHECK CONTROL ABUNDANCE
-############################
 
 otu <- as.data.frame(
   otu_table(ps)
@@ -346,10 +261,7 @@ patient_prevalence_percent <-
   patient_prevalence /
   length(patient_samples) * 100
 
-
-############################
-# 22. CONTROL ABUNDANCES
-############################
+#ABUNDANCE OF CONTROLS
 
 negative_samples <- rownames(metadata)[
   metadata$Sample_Type ==
@@ -394,11 +306,7 @@ positive_abundance <- rowSums(
   ]
 )
 
-
-############################
-# 23. FINAL CONTAMINATION
-#     SCREENING TABLE
-############################
+#SCREEN CONTAMINANTS
 
 summary_table <- data.frame(
   
@@ -425,22 +333,11 @@ summary_table <- data.frame(
   stringsAsFactors = FALSE
 )
 
-
-############################
-# 24. SAVE SUMMARY
-############################
-
 write.csv(
   summary_table,
   "fungi_contamination_summary.csv",
   row.names = FALSE
 )
-
-
-############################
-# 25. DISPLAY POTENTIAL
-#     CONTAMINANTS
-############################
 
 cat("\n===== POTENTIAL CONTAMINANTS + CONTROL INFORMATION =====\n")
 
@@ -452,13 +349,8 @@ print(
 
 
 
-############################################################
-# 26. REMOVE DECONTAM-FLAGGED TAXA
-#
-# IMPORTANT:
-# This creates a NEW object.
-# Original ps is NOT modified.
-############################################################
+###REMOVE DECONTAM-FLAGGED TAXA
+
 
 ps_clean <- prune_taxa(
   !taxa_names(ps) %in% contaminant_taxa,
@@ -466,9 +358,6 @@ ps_clean <- prune_taxa(
 )
 
 
-############################
-# 27. CHECK CLEAN DATA
-############################
 
 cat("\n===== CLEAN DATA =====\n")
 
@@ -491,9 +380,8 @@ cat(
 )
 
 
-############################
-# 28. SAVE CLEAN COUNT TABLE
-############################
+##### SAVE CLEAN COUNT TABLE
+
 
 clean_counts <- as.data.frame(
   otu_table(ps_clean)
@@ -503,12 +391,7 @@ write.csv(
   clean_counts,
   "fungi_species_counts_clean.csv"
 )
-
-
-############################
-# 29. RELATIVE ABUNDANCE
-############################
-
+##RELATIVE ABUNDANCE
 ps_relative <- transform_sample_counts(
   ps_clean,
   function(x) {
@@ -519,11 +402,6 @@ ps_relative <- transform_sample_counts(
   }
 )
 
-
-############################
-# 30. SAVE RELATIVE ABUNDANCE
-############################
-
 relative_abundance <- as.data.frame(
   otu_table(ps_relative)
 )
@@ -532,11 +410,7 @@ write.csv(
   relative_abundance,
   "fungi_species_relative_abundance_clean.csv"
 )
-
-
-############################
-# 31. SAVE PHYLOSEQ OBJECTS
-############################
+##SAVE FILES FOR TRUBBLESHOOT
 
 saveRDS(
   ps,
@@ -553,18 +427,7 @@ saveRDS(
   "fungi_phyloseq_relative.rds"
 )
 
-
-cat("\n========================================\n")
-cat("      PIPELINE COMPLETED\n")
-cat("========================================\n")
-cat("Original phyloseq: fungi_phyloseq_original.rds\n")
-cat("Clean phyloseq:    fungi_phyloseq_clean.rds\n")
-cat("Relative abundance: fungi_phyloseq_relative.rds\n")
-cat("Decontam results:  decontam_results.csv\n")
-cat("Contamination summary: fungal_contamination_summary.csv\n")
-cat("Clean counts: fungi_species_counts_clean.csv\n")
-
-#######FOR FUNGI
+####### STASTICAL ANALYSIS FOR FUNGI & BACTERIA WITH SAME SCRIPT
 ###alpha diversity
 library(vegan)
 library(ggplot2)
@@ -578,18 +441,10 @@ library(dplyr)
 library(tidyr)
 library(readr)
 
-# ============================================================
-# SETTINGS
-# ============================================================
-
 abundance_file <- "fungi_species_relative_abundance_clean.csv"
 metadata_file  <- "metadata.csv"
 
 output_prefix <- "species"
-
-# ============================================================
-# 1. READ DATA
-# ============================================================
 
 abundance <- read.csv(
   abundance_file,
@@ -607,20 +462,12 @@ print(dim(abundance))
 
 cat("\nMetadata:\n")
 print(metadata)
-
-# ============================================================
-# 2. KEEP ONLY PATIENT SAMPLES
-# ============================================================
-
+##KEEP PATIENTS ONLY
 patient_metadata <- metadata %>%
   filter(Sample_Type == "Patient")
 
 cat("\nPatient samples:\n")
 print(patient_metadata)
-
-# ============================================================
-# 3. CHECK L2/L3
-# ============================================================
 
 cat("\nSite distribution:\n")
 print(table(patient_metadata$Site))
@@ -628,9 +475,6 @@ print(table(patient_metadata$Site))
 cat("\nPatients:\n")
 print(table(patient_metadata$Patient))
 
-# ============================================================
-# 4. MATCH ABUNDANCE WITH METADATA
-# ============================================================
 
 common_samples <- intersect(
   colnames(abundance),
@@ -658,10 +502,6 @@ print(colnames(abundance))
 cat("\nMetadata samples:\n")
 print(patient_metadata$Barcode)
 
-# ============================================================
-# 5. CONVERT TO NUMERIC
-# ============================================================
-
 abundance <- as.data.frame(
   lapply(abundance, as.numeric),
   check.names = FALSE
@@ -675,10 +515,6 @@ rownames(abundance) <- rownames(
   )
 )
 
-# ============================================================
-# 6. REMOVE TAXA WITH ZERO ABUNDANCE
-# ============================================================
-
 abundance <- abundance[
   rowSums(abundance) > 0,
   ,
@@ -688,19 +524,13 @@ abundance <- abundance[
 cat("\nNumber of taxa:", nrow(abundance), "\n")
 cat("Number of samples:", ncol(abundance), "\n")
 
-# ============================================================
-# 7. TRANSPOSE
-# ============================================================
 
-# vegan requires:
+# vegan requires
 # rows = samples
 # columns = taxa
 
 otu <- t(as.matrix(abundance))
 
-# ============================================================
-# 8. ALPHA DIVERSITY
-# ============================================================
 
 alpha <- data.frame(
   Sample = rownames(otu),
@@ -718,10 +548,6 @@ alpha <- data.frame(
   )
 )
 
-# ============================================================
-# 9. ADD METADATA
-# ============================================================
-
 alpha <- alpha %>%
   left_join(
     patient_metadata,
@@ -734,9 +560,6 @@ alpha$Site <- factor(
   levels = c("L3", "L2")
 )
 
-# ============================================================
-# 10. SAVE ALPHA TABLE
-# ============================================================
 
 write.csv(
   alpha,
@@ -747,9 +570,7 @@ write.csv(
 cat("\nAlpha diversity results:\n")
 print(alpha)
 
-# ============================================================
-# 11. PAIRED WILCOXON TESTS
-# ============================================================
+# PAIRED WILCOXON TESTS
 
 # ---------- Shannon ----------
 
@@ -822,10 +643,6 @@ cat("SIMPSON PAIRED WILCOXON\n")
 cat("============================\n")
 print(simpson_test)
 
-# ============================================================
-# 12. SAVE P-VALUES
-# ============================================================
-
 stats <- data.frame(
   Metric = c(
     "Observed",
@@ -874,10 +691,7 @@ alpha_long$Metric <- factor(
   )
 )
 
-# ============================================================
-# 3. PLOT
-# ============================================================
-
+##PLOT DIVERSITY
 p <- ggplot(
   alpha_long,
   aes(
@@ -989,9 +803,6 @@ p <- ggplot(
 
 print(p)
 
-# ============================================================
-# 4. SAVE
-# ============================================================
 
 ggsave(
   "fungi_Alpha_Diversity_L2_L3.png",
@@ -1008,19 +819,11 @@ ggsave(
 
 ### BETA DIVERSITY
 
-# ============================================================
-# BETA DIVERSITY
-# L2 = LESION
-# L3 = NON-LESION
-# ============================================================
 
 library(vegan)
 library(ggplot2)
 library(dplyr)
 
-# ============================================================
-# 1. READ ABUNDANCE DATA
-# ============================================================
 
 abundance <- read.csv(
   "fungi_species_relative_abundance_clean.csv",
@@ -1045,10 +848,6 @@ abundance <- abundance[
 cat("Taxa:", nrow(abundance), "\n")
 cat("Samples:", ncol(abundance), "\n")
 
-
-# ============================================================
-# 2. PATIENT SAMPLE BAR CODES
-# ============================================================
 metadata_new <- read.csv("metadata.csv", stringsAsFactors = FALSE)
 patient_samples <- c(
   "barcode89", "barcode91", "barcode87", "barcode92", "barcode86", "barcode93", "barcode85", "barcode88", "barcode90", "barcode84"
@@ -1070,19 +869,14 @@ otu_rel <- sweep(
   rowSums(otu),
   "/"
 )
-
-# ------------------------------------------------------------
 # Bray-Curtis
-# ------------------------------------------------------------
 
 bray <- vegdist(
   otu_rel,
   method = "bray"
 )
 
-# ------------------------------------------------------------
 # PCoA
-# ------------------------------------------------------------
 
 pcoa <- cmdscale(
   bray,
@@ -1105,9 +899,6 @@ PC2 <- round(
   1
 )
 
-# ------------------------------------------------------------
-# PCoA dataframe
-# ------------------------------------------------------------
 
 pcoa_df <- data.frame(
   Barcode = rownames(pcoa$points),
@@ -1268,6 +1059,8 @@ ggsave(
   height = 7,
   dpi = 300
 )
+
+##SAVE THE OTHER FILES 
 write.csv(
   pcoa_df,
   "fungi_PCoA_coordinates.csv",
@@ -1298,9 +1091,6 @@ library(tidyr)
 library(ggplot2)
 
 
-# ============================================================
-# 1. READ GENUS ABUNDANCE
-# ============================================================
 
 abundance <- read.csv(
   "fungi_species_relative_abundance_clean.csv",
@@ -1326,9 +1116,6 @@ cat("Number of genera:", nrow(abundance), "\n")
 cat("Number of samples:", ncol(abundance), "\n")
 
 
-# ============================================================
-# 2. PATIENT SAMPLES ONLY
-# ============================================================
 patient_samples <- c(
   "barcode89", "barcode91", "barcode87", "barcode92", "barcode86", "barcode93", "barcode85", "barcode88", "barcode90", "barcode84"
 )
@@ -1338,11 +1125,6 @@ abundance_patient <- abundance[
   patient_samples,
   drop = FALSE
 ]
-
-
-# ============================================================
-# 3. READ METADATA
-# ============================================================
 
 metadata <- read.csv(
   "metadata.csv",
@@ -1366,11 +1148,6 @@ metadata$Sample_Type <- trimws(
   metadata$Sample_Type
 )
 
-
-# ============================================================
-# 4. KEEP PATIENT SAMPLES
-# ============================================================
-
 metadata_patient <- metadata %>%
   filter(
     Sample_Type == "Patient"
@@ -1385,11 +1162,6 @@ metadata_patient <- metadata_patient[
   ,
   drop = FALSE
 ]
-
-
-# ============================================================
-# 5. CHECK
-# ============================================================
 
 print(
   metadata_patient[
@@ -1417,9 +1189,6 @@ if (
 cat(
   "\nSUCCESS: 10 patient samples matched.\n"
 )
-# ============================================================
-# STEP 2: L2 vs L3 GENUS ABUNDANCE
-# ============================================================
 
 # Convert abundance to relative abundance (%)
 abundance_rel <- sweep(
@@ -1430,10 +1199,6 @@ abundance_rel <- sweep(
 ) * 100
 
 
-# ============================================================
-# Create long-format table
-# ============================================================
-
 species_long <- abundance_rel %>%
   as.data.frame() %>%
   tibble::rownames_to_column("species") %>%
@@ -1442,11 +1207,6 @@ species_long <- abundance_rel %>%
     names_to = "Barcode",
     values_to = "Relative_Abundance"
   )
-
-
-# ============================================================
-# Add metadata
-# ============================================================
 
 species_long <- species_long %>%
   left_join(
@@ -1458,9 +1218,8 @@ species_long <- species_long %>%
   )
 
 
-# ============================================================
 # Calculate mean abundance in L2 and L3
-# ============================================================
+
 
 species_summary <- species_long %>%
   group_by(species, Site) %>%
@@ -1477,9 +1236,6 @@ species_summary <- species_long %>%
   )
 
 
-# ============================================================
-# Convert L2/L3 into columns
-# ============================================================
 
 species_wide <- species_summary %>%
   select(
@@ -1493,10 +1249,8 @@ species_wide <- species_summary %>%
     values_fill = 0
   )
 
-
-# ============================================================
 # Calculate difference
-# ============================================================
+
 
 species_wide <- species_wide %>%
   mutate(
@@ -1509,20 +1263,10 @@ species_wide <- species_wide %>%
     )
   )
 
-
-# ============================================================
-# Sort by largest difference
-# ============================================================
-
 species_wide <- species_wide %>%
   arrange(
     desc(abs(Difference_L2_L3))
   )
-
-
-# ============================================================
-# View results
-# ============================================================
 
 print(
   head(
@@ -1536,10 +1280,8 @@ write.csv(
   row.names = FALSE
 )
 
+#PAIRED WILCOXON TEST FOR EVERY GENUS
 
-# ============================================================
-# STEP 3: PAIRED WILCOXON TEST FOR EVERY GENUS
-# ============================================================
 
 species_test <- species_long %>%
   group_by(species) %>%
@@ -1602,11 +1344,6 @@ species_test <- species_long %>%
   }) %>%
   ungroup()
 
-
-# ============================================================
-# FDR CORRECTION
-# ============================================================
-
 species_test <- species_test %>%
   mutate(
     FDR = p.adjust(
@@ -1614,11 +1351,6 @@ species_test <- species_test %>%
       method = "BH"
     )
   )
-
-
-# ============================================================
-# ADD ENRICHMENT DIRECTION
-# ============================================================
 
 species_test <- species_test %>%
   mutate(
@@ -1633,17 +1365,8 @@ species_test <- species_test %>%
   )
 
 
-# ============================================================
-# SORT BY FDR
-# ============================================================
-
 species_test <- species_test %>%
   arrange(FDR)
-
-
-# ============================================================
-# VIEW RESULTS
-# ============================================================
 
 print(
   head(
@@ -1662,11 +1385,7 @@ cat(
   nrow(significant_species),
   "\n"
 )
-
-
-# ============================================================
-# STEP 4: TOP DIFFERENTIALLY ABUNDANT GENERA
-# ============================================================
+# TOP DIFFERENTIALLY ABUNDANT GENERA
 
 top_species <- species_test %>%
   filter(
@@ -1754,26 +1473,12 @@ ggsave(
   dpi = 300
 )
 
-
-
-
-# ============================================================
 # CONTROL ANALYSIS
-# STEP 1: PREPARE ALL SAMPLES
-
-
-# ============================================================
-# CONTROL / CONTAMINATION ANALYSIS
-# STEP 1: PREPARE ALL SAMPLES
-# ============================================================
 
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-# ------------------------------------------------------------
-# Read genus abundance
-# ------------------------------------------------------------
 
 abundance <- read.csv(
   "fungi_species_relative_abundance_clean.csv",
@@ -1795,9 +1500,6 @@ abundance <- abundance[
   drop = FALSE
 ]
 
-# ------------------------------------------------------------
-# All 13 samples
-# ------------------------------------------------------------
 
 all_samples <- paste0(
   "barcode",
@@ -1822,10 +1524,6 @@ cat(
   "\n"
 )
 
-# ------------------------------------------------------------
-# Read metadata
-# ------------------------------------------------------------
-
 metadata <- read.csv(
   "metadata.csv",
   check.names = FALSE,
@@ -1847,10 +1545,6 @@ metadata$Patient <- trimws(
 metadata$Site <- trimws(
   metadata$Site
 )
-
-# ------------------------------------------------------------
-# Match metadata to abundance
-# ------------------------------------------------------------
 
 metadata_all <- metadata[
   match(
@@ -1875,9 +1569,6 @@ print(
   ]
 )
 
-# ------------------------------------------------------------
-# Check matching
-# ------------------------------------------------------------
 
 if (
   !all(
@@ -1894,11 +1585,6 @@ cat(
   "\nAll 13 samples matched successfully.\n"
 )
 
-
-
-# ============================================================
-# STEP 2: RELATIVE ABUNDANCE
-# ============================================================
 
 abundance_rel_all <- sweep(
   abundance_all,
@@ -1940,10 +1626,6 @@ print(
 print(control_long)
 
 
-# ============================================================
-# STEP 3: SAMPLE COMPOSITION
-# ============================================================
-
 sample_summary <- control_long %>%
   group_by(
     Barcode,
@@ -1963,13 +1645,6 @@ sample_summary <- control_long %>%
 
 print(sample_summary)
 
-# ============================================================
-# STEP 4: TOP GENERA IN CONTROLS
-# ===========================================================
-
-# ============================================================
-# TOP 10 GENERA FOR EACH CONTROL
-# ============================================================
 
 control_top10 <- control_long %>%
   filter(
@@ -2001,9 +1676,8 @@ control_top10 <- control_long %>%
 print(control_top10)
 
 
-# ============================================================
+
 # PLOT TOP 10 GENERA ONLY
-# ============================================================
 
 p_control <- ggplot(
   control_top10,
@@ -2077,7 +1751,6 @@ ggsave(
 )
 
 cat("Clean relative abundance: fungi_species_relative_abundance_clean.csv\n")
-cat("========================================\n")
 
 
 ###for bacteria
