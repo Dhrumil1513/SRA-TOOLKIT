@@ -1,3 +1,59 @@
+###SCRIPT STARTS AFTER BASECALLING
+
+for dir in barcode*/; do     sample=$(basename "$dir");      files=("$dir"/*.fastq.gz);      if [ ! -e "${files[0]}" ]; then         echo "Skipping $sample: no FASTQ.gz files";         continue;     fi;      echo "================================";     echo "Processing $sample";     echo "================================";      > "trimmed_fastq/${sample}_trimmed.fastq";      for input in "${files[@]}"; do         echo "Trimming: $(basename "$input")";          dorado trim             "$input"             --sequencing-kit SQK-NBD114.96             --emit-fastq             >> "trimmed_fastq/${sample}_trimmed.fastq";      done;      echo "Finished $sample";  done
+
+cat length_filtered_fastq/barcode*_200_3500.fastq > all_samples_200_3500.fastq
+awk 'NR%4==1 {n++} END {print "Total reads:", n}' all_samples_200_3500.fastq
+fastqc     all_samples_200_3500.fastq     --outdir fastqc_combined     --threads 8
+
+NanoPlot \
+  --fastq length_filtered_fastq/barcode*.fastq \
+  --outdir nanoplot \
+  --threads 8
+####trim read to the length
+for f in length_filtered_fastq/barcode*.fastq; do
+    sample=$(basename "$f" .fastq)
+
+    seqkit subseq \
+        -r 1:1500 \
+        "$f" \
+        -o "trimmed_1500/${sample}_1500.fastq"
+done
+
+#### DIVIDE READS IN FUNGI AND BACTERIA BASED ON PRIMERS AND HERE I USE AND MEANS CONTAIN THE READ THAT HAD BOTH PRIMERS
+for f in length_filtered_fastq/barcode*_.fastq; do     sample=$(basename "$f" _.fastq);      echo "Processing $sample";      cutadapt         -g "AGRGTTYGATYMTGGCTCAG"         -a "CGGYTACCTTGTTACGACTT"         --discard-untrimmed         -o "bacteria_reads/${sample}_bacteria.fastq"         "$f";      cutadapt         -g "TCCGTAGGTGAACCTGCGG"         -a "TCCTCCGCTTATTGATATGC"         --discard-untrimmed         -o "fungi_reads/${sample}_fungi.fastq"         "$f";  done
+
+##EMU DATABASE
+conda install -c conda-forge -c bioconda emu -y
+emu --version
+mkdir -p ~/emu_db/bacteria
+export EMU_DATABASE_DIR=$HOME/emu_db/bacteria
+cd $EMU_DATABASE_DIR
+pip install osfclient
+osf -p 56uf7 fetch osfstorage/emu-prebuilt/emu.tar
+tar -xvf emu.tar
+Ls -ltr
+##FOR FUNGAL DATABASE I DOWLOADED THE TAXONOPMY FILES AND PASTE IN mkdir -p ~/emu_db/fungi    (link for fungi data : https://osf.io/s59tn/?view_only=6defbb457eb84c11aa4ad30fee5ab0ae)
+emu abundance \
+    /media/btlab2/disk2/microbiome/fastq_pass/length_filtered_fastq/barcode01_200_3500.fastq \
+    --db ~/emu_db/bacteria \
+    --output-dir ~/emu_test_bacteria \
+    --threads 16
+
+emu abundance \
+    /media/btlab2/disk2/microbiome/fastq2/length_filtered_fastq/barcode01.fastq \
+    --db ~/emu_db/fungi \
+    --output-dir ~/emu_test_fungi \
+    --threads 16
+### dont go direct to relative abundance fist remove contam using decantam packages
+for f in *.fastq; do sample=$(basename "$f" .fastq);      echo "========================================";     echo "Running EMU for $sample";     echo "========================================";      emu abundance         "$f"         --db ~/emu_db/fungi         --output-dir "emu_fungi"         --threads 16    –keep counts;  done
+
+
+emu combine-outputs emu_fungi_counts genus --counts
+emu combine-outputs emu_fungi_counts species --counts
+ emu combine-outputs . species --counts
+
+
 ## Decantam packege
 ##INPUT FILES
 count_file <- "fungi-species-count.csv"
