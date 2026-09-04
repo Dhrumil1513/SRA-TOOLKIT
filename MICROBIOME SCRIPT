@@ -1806,4 +1806,239 @@ ggsave(
 )
 
 cat("Clean relative abundance: fungi_species_relative_abundance_clean.csv\n")
+####TO MERGE 2 FILES 
+
+####MERGE 2 FILES
+# ==============================
+# Merge species abundance tables
+# ==============================
+
+# Input files
+file1 <- "fungi-run-3_species_counts_clean.csv"
+file2 <- "fungi-run-2_species_counts_clean.csv"
+
+# Output file
+output <- "merged_fungi_abundance.csv"
+
+# ============================================
+# MERGE TWO SPECIES ABUNDANCE CSV FILES
+# ============================================
+
+# --------------------------------------------
+# 1. Read files
+# --------------------------------------------
+
+df1 <- read.csv(
+  file1,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+df2 <- read.csv(
+  file2,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+
+# --------------------------------------------
+# 2. Print input dimensions
+# --------------------------------------------
+
+cat("\n====================================\n")
+cat("INPUT FILE DIMENSIONS\n")
+cat("====================================\n")
+
+cat("File 1:", file1, "\n")
+cat("Dimension:", paste(dim(df1), collapse = " x "), "\n")
+cat("Rows:", nrow(df1), "\n")
+cat("Columns:", ncol(df1), "\n\n")
+
+cat("File 2:", file2, "\n")
+cat("Dimension:", paste(dim(df2), collapse = " x "), "\n")
+cat("Rows:", nrow(df2), "\n")
+cat("Columns:", ncol(df2), "\n")
+
+
+# --------------------------------------------
+# 3. Species column
+# --------------------------------------------
+
+species_col <- "species_name"
+
+if (!species_col %in% names(df1)) {
+  stop("species_name column not found in File 1")
+}
+
+if (!species_col %in% names(df2)) {
+  stop("species_name column not found in File 2")
+}
+
+
+# --------------------------------------------
+# 4. Find barcode columns
+# --------------------------------------------
+
+barcode1 <- grep("^barcode", names(df1), value = TRUE)
+barcode2 <- grep("^barcode", names(df2), value = TRUE)
+
+all_barcodes <- unique(c(barcode1, barcode2))
+
+
+cat("\n====================================\n")
+cat("BARCODE SUMMARY\n")
+cat("====================================\n")
+
+cat("File 1 barcodes :", length(barcode1), "\n")
+cat("File 2 barcodes :", length(barcode2), "\n")
+cat("Total unique barcodes :", length(all_barcodes), "\n")
+
+
+# --------------------------------------------
+# 5. Merge by species_name
+# --------------------------------------------
+
+merged <- merge(
+  df1,
+  df2,
+  by = species_col,
+  all = TRUE,
+  suffixes = c("_file1", "_file2")
+)
+
+
+# --------------------------------------------
+# 6. Create final table
+# --------------------------------------------
+
+result <- data.frame(
+  species_name = merged[[species_col]],
+  check.names = FALSE
+)
+
+
+# --------------------------------------------
+# 7. Add all barcode columns
+# --------------------------------------------
+
+for (barcode in all_barcodes) {
+  
+  col1 <- paste0(barcode, "_file1")
+  col2 <- paste0(barcode, "_file2")
+  
+  # Barcode present in BOTH files
+  if (col1 %in% names(merged) &&
+      col2 %in% names(merged)) {
+    
+    result[[barcode]] <- ifelse(
+      is.na(merged[[col1]]),
+      merged[[col2]],
+      merged[[col1]]
+    )
+    
+    # Barcode only in File 1
+  } else if (col1 %in% names(merged)) {
+    
+    result[[barcode]] <- merged[[col1]]
+    
+    # Barcode only in File 2
+  } else if (col2 %in% names(merged)) {
+    
+    result[[barcode]] <- merged[[col2]]
+    
+    # Barcode exists without suffix
+  } else if (barcode %in% names(merged)) {
+    
+    result[[barcode]] <- merged[[barcode]]
+  }
+}
+
+
+# --------------------------------------------
+# 8. Replace NA with zero
+# --------------------------------------------
+
+result[all_barcodes] <- lapply(
+  result[all_barcodes],
+  function(x) {
+    x[is.na(x)] <- 0
+    return(x)
+  }
+)
+
+
+# --------------------------------------------
+# 9. Sort barcode columns
+# --------------------------------------------
+
+barcode_names <- names(result)[
+  names(result) != "species_name"
+]
+
+# Separate numeric and non-numeric barcode names
+barcode_number <- suppressWarnings(
+  as.numeric(sub("^barcode", "", barcode_names))
+)
+
+# Numeric barcodes first, then non-numeric
+barcode_names <- barcode_names[
+  order(
+    is.na(barcode_number),
+    barcode_number,
+    barcode_names
+  )
+]
+
+
+# --------------------------------------------
+# 10. Final column order
+# --------------------------------------------
+
+result <- result[
+  ,
+  c("species_name", barcode_names),
+  drop = FALSE
+]
+
+
+# --------------------------------------------
+# 11. Save merged file
+# --------------------------------------------
+
+write.csv(
+  result,
+  output,
+  row.names = FALSE,
+  quote = FALSE
+)
+
+
+# --------------------------------------------
+# 12. Print final dimensions
+# --------------------------------------------
+
+cat("\n====================================\n")
+cat("FINAL MERGED FILE\n")
+cat("====================================\n")
+
+cat("Output:", output, "\n")
+cat("Dimension:", paste(dim(result), collapse = " x "), "\n")
+cat("Rows:", nrow(result), "\n")
+cat("Columns:", ncol(result), "\n")
+
+cat("\n====================================\n")
+cat("SUMMARY\n")
+cat("====================================\n")
+
+cat("File 1 dimension :", paste(dim(df1), collapse = " x "), "\n")
+cat("File 2 dimension :", paste(dim(df2), collapse = " x "), "\n")
+cat("Merged dimension :", paste(dim(result), collapse = " x "), "\n")
+
+cat("\nFile 1 barcodes :", length(barcode1), "\n")
+cat("File 2 barcodes :", length(barcode2), "\n")
+cat("Merged barcodes :", length(barcode_names), "\n")
+
+cat("\nMerged file successfully created:\n")
+cat(output, "\n")
+
 
